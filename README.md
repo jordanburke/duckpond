@@ -25,7 +25,7 @@ pnpm add duckpond
 ## Quick Start
 
 ```typescript
-import { DuckPond } from 'duckpond'
+import { DuckPond } from "duckpond"
 
 // Configure with Cloudflare R2
 const pond = new DuckPond({
@@ -33,19 +33,19 @@ const pond = new DuckPond({
     accountId: process.env.R2_ACCOUNT_ID!,
     accessKeyId: process.env.R2_ACCESS_KEY_ID!,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-    bucket: 'my-bucket'
+    bucket: "my-bucket",
   },
-  maxActiveUsers: 10
+  maxActiveUsers: 10,
 })
 
 // Initialize
 await pond.init()
 
 // Query with functional error handling
-const result = await pond.query('user123', 'SELECT * FROM orders')
+const result = await pond.query("user123", "SELECT * FROM orders")
 result.fold(
-  error => console.error('Query failed:', error.message),
-  rows => console.log('Results:', rows)
+  (error) => console.error("Query failed:", error.message),
+  (rows) => console.log("Results:", rows),
 )
 
 // Cleanup
@@ -59,30 +59,36 @@ await pond.close()
 DuckPond uses [functype](https://github.com/jordanburke/functype) for type-safe error handling without exceptions:
 
 ```typescript
-import { Either } from 'duckpond'
+import { Either } from "duckpond"
 
 // All operations return Either<Error, Success>
-const result = await pond.query<{ id: number, name: string }>('user123', 'SELECT * FROM users')
+const result = await pond.query<{ id: number; name: string }>("user123", "SELECT * FROM users")
 
 // Pattern match on success/failure
 result.fold(
-  error => {
+  (error) => {
     // Handle error case
     console.error(`[${error.code}] ${error.message}`)
-    if (error.cause) console.error('Caused by:', error.cause)
+    if (error.cause) console.error("Caused by:", error.cause)
   },
-  rows => {
+  (rows) => {
     // Handle success case
-    rows.forEach(user => console.log(`${user.id}: ${user.name}`))
-  }
+    rows.forEach((user) => console.log(`${user.id}: ${user.name}`))
+  },
 )
 
 // Or check explicitly
 if (result.isLeft()) {
-  const error = result.fold(err => err, () => null)
+  const error = result.fold(
+    (err) => err,
+    () => null,
+  )
   // Handle error
 } else {
-  const rows = result.fold(() => [], data => data)
+  const rows = result.fold(
+    () => [],
+    (data) => data,
+  )
   // Process rows
 }
 ```
@@ -93,17 +99,17 @@ Each user gets an isolated database instance:
 
 ```typescript
 // User A's queries don't affect User B
-await pond.query('userA', 'CREATE TABLE orders (id INT)')
-await pond.query('userB', 'SELECT * FROM orders')  // Error: table doesn't exist
+await pond.query("userA", "CREATE TABLE orders (id INT)")
+await pond.query("userB", "SELECT * FROM orders") // Error: table doesn't exist
 
 // Check user status
-const isActive = pond.isAttached('userA')  // true if cached
+const isActive = pond.isAttached("userA") // true if cached
 
 // Get user statistics
-const stats = await pond.getUserStats('userA')
+const stats = await pond.getUserStats("userA")
 stats.fold(
-  error => console.error(error.message),
-  info => console.log(`User: ${info.userId}, Last access: ${info.lastAccess}`)
+  (error) => console.error(error.message),
+  (info) => console.log(`User: ${info.userId}, Last access: ${info.lastAccess}`),
 )
 ```
 
@@ -114,20 +120,26 @@ DuckPond supports multiple storage strategies:
 ```typescript
 // Parquet files (default) - best for analytics
 const pond = new DuckPond({
-  r2: { /* ... */ },
-  strategy: 'parquet'
+  r2: {
+    /* ... */
+  },
+  strategy: "parquet",
 })
 
 // DuckDB files - full database persistence
 const pond = new DuckPond({
-  r2: { /* ... */ },
-  strategy: 'duckdb'
+  r2: {
+    /* ... */
+  },
+  strategy: "duckdb",
 })
 
 // Hybrid - mix both approaches
 const pond = new DuckPond({
-  r2: { /* ... */ },
-  strategy: 'hybrid'
+  r2: {
+    /* ... */
+  },
+  strategy: "hybrid",
 })
 ```
 
@@ -175,8 +187,8 @@ Initialize DuckPond. Must be called before any operations.
 ```typescript
 const result = await pond.init()
 result.fold(
-  error => console.error('Initialization failed:', error.message),
-  () => console.log('Ready!')
+  (error) => console.error("Initialization failed:", error.message),
+  () => console.log("Ready!"),
 )
 ```
 
@@ -185,9 +197,9 @@ result.fold(
 Execute a SQL query for a specific user.
 
 ```typescript
-const result = await pond.query<{ id: number, total: number }>(
-  'user123',
-  'SELECT id, SUM(amount) as total FROM orders GROUP BY id'
+const result = await pond.query<{ id: number; total: number }>(
+  "user123",
+  "SELECT id, SUM(amount) as total FROM orders GROUP BY id",
 )
 ```
 
@@ -196,13 +208,16 @@ const result = await pond.query<{ id: number, total: number }>(
 Execute SQL without returning results (DDL, DML).
 
 ```typescript
-await pond.execute('user123', `
+await pond.execute(
+  "user123",
+  `
   CREATE TABLE products (
     id INTEGER PRIMARY KEY,
     name VARCHAR,
     price DECIMAL(10,2)
   )
-`)
+`,
+)
 ```
 
 #### `async getUserStats(userId: string): AsyncDuckPondResult<UserStats>`
@@ -210,15 +225,16 @@ await pond.execute('user123', `
 Get statistics about a user's database.
 
 ```typescript
-const result = await pond.getUserStats('user123')
+const result = await pond.getUserStats("user123")
 result.fold(
-  error => console.error(error.message),
-  stats => console.log({
-    userId: stats.userId,
-    attached: stats.attached,
-    lastAccess: stats.lastAccess,
-    memoryUsage: stats.memoryUsage
-  })
+  (error) => console.error(error.message),
+  (stats) =>
+    console.log({
+      userId: stats.userId,
+      attached: stats.attached,
+      lastAccess: stats.lastAccess,
+      memoryUsage: stats.memoryUsage,
+    }),
 )
 ```
 
@@ -227,8 +243,8 @@ result.fold(
 Check if a user is currently cached.
 
 ```typescript
-if (pond.isAttached('user123')) {
-  console.log('User database is active')
+if (pond.isAttached("user123")) {
+  console.log("User database is active")
 }
 ```
 
@@ -237,7 +253,7 @@ if (pond.isAttached('user123')) {
 Manually detach a user's database from the cache.
 
 ```typescript
-await pond.detachUser('user123')
+await pond.detachUser("user123")
 ```
 
 #### `async close(): AsyncDuckPondResult<void>`
@@ -251,7 +267,7 @@ await pond.close()
 ### Error Codes
 
 ```typescript
-import { ErrorCode } from 'duckpond'
+import { ErrorCode } from "duckpond"
 
 ErrorCode.CONNECTION_FAILED
 ErrorCode.R2_CONNECTION_ERROR
@@ -273,11 +289,11 @@ ErrorCode.UNKNOWN_ERROR
 ```typescript
 const pond = new DuckPond({
   s3: {
-    region: 'us-east-1',
+    region: "us-east-1",
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    bucket: 'my-duckdb-bucket'
-  }
+    bucket: "my-duckdb-bucket",
+  },
 })
 ```
 
@@ -286,70 +302,68 @@ const pond = new DuckPond({
 ```typescript
 const pond = new DuckPond({
   s3: {
-    region: 'us-east-1',
-    accessKeyId: 'minioadmin',
-    secretAccessKey: 'minioadmin',
-    bucket: 'duckdb',
-    endpoint: 'http://localhost:9000'
-  }
+    region: "us-east-1",
+    accessKeyId: "minioadmin",
+    secretAccessKey: "minioadmin",
+    bucket: "duckdb",
+    endpoint: "http://localhost:9000",
+  },
 })
 ```
 
 ### Advanced Error Handling
 
 ```typescript
-import { ErrorCode } from 'duckpond'
+import { ErrorCode } from "duckpond"
 
-const result = await pond.query('user123', 'SELECT * FROM orders')
+const result = await pond.query("user123", "SELECT * FROM orders")
 
 result.fold(
-  error => {
+  (error) => {
     switch (error.code) {
       case ErrorCode.QUERY_EXECUTION_ERROR:
-        console.error('SQL error:', error.message)
+        console.error("SQL error:", error.message)
         if (error.context?.sql) {
-          console.error('Query:', error.context.sql)
+          console.error("Query:", error.context.sql)
         }
         break
 
       case ErrorCode.USER_NOT_FOUND:
-        console.error('User not found:', error.context?.userId)
+        console.error("User not found:", error.context?.userId)
         break
 
       case ErrorCode.MEMORY_LIMIT_EXCEEDED:
-        console.error('Out of memory:', error.context?.limit)
+        console.error("Out of memory:", error.context?.limit)
         break
 
       default:
-        console.error('Unexpected error:', error)
+        console.error("Unexpected error:", error)
     }
   },
-  rows => {
+  (rows) => {
     console.log(`Fetched ${rows.length} rows`)
-  }
+  },
 )
 ```
 
 ### Using Functype Utilities
 
 ```typescript
-import { Option, List } from 'duckpond'
+import { Option, List } from "duckpond"
 
 // Safe null handling with Option
 const maybeUser = Option(user)
-const userName = maybeUser
-  .map(u => u.name)
-  .orElse('Anonymous')
+const userName = maybeUser.map((u) => u.name).orElse("Anonymous")
 
 // Immutable collections with List
 const users = List([
-  { id: 1, name: 'Alice' },
-  { id: 2, name: 'Bob' }
+  { id: 1, name: "Alice" },
+  { id: 2, name: "Bob" },
 ])
 
 const names = users
-  .map(u => u.name)
-  .filter(name => name.startsWith('A'))
+  .map((u) => u.name)
+  .filter((name) => name.startsWith("A"))
   .toArray()
 ```
 

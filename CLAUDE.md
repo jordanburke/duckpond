@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **DuckPond** is a multi-tenant DuckDB manager with Cloudflare R2 and AWS S3 storage integration, built using functional programming patterns from the [functype](https://github.com/jordanburke/functype) library. It provides per-user database isolation with automatic resource management, LRU caching, and type-safe error handling using `Either<E, T>`.
 
 ### Key Technologies
+
 - **DuckDB node-api** (v1.4.1-r.4): In-process analytical database
 - **functype** (v0.16.0): Functional programming utilities for TypeScript
 - **TypeScript** (v5.9.3): Full type safety with strict mode
@@ -73,6 +74,7 @@ DEBUG=duckpond:cache pnpm test
 ```
 
 Debug namespaces (see src/utils/logger.ts):
+
 - `duckpond:main` - DuckPond class operations
 - `duckpond:cache` - LRU cache operations
 
@@ -102,12 +104,14 @@ dist/                     # Build output (ESM + CJS + types)
 #### 1. DuckPond Class (src/DuckPond.ts)
 
 Main manager responsible for:
+
 - **User lifecycle**: Attach/detach user databases from cache
 - **Connection pooling**: Reuse connections via LRU cache
 - **Cloud storage**: R2/S3 integration via DuckDB extensions
 - **Error handling**: All methods return `AsyncDuckPondResult<T>` (Promise<Either<Error, T>>)
 
 Key methods:
+
 - `init()`: Initialize DuckDB instance and configure cloud storage
 - `getUserConnection(userId)`: Get or create user connection
 - `query<T>(userId, sql)`: Execute query with type-safe results
@@ -118,12 +122,14 @@ Key methods:
 #### 2. LRUCache (src/cache/LRUCache.ts)
 
 Generic least-recently-used cache using functype:
+
 - **Option<T>** for safe get operations
 - **List<T>** for immutable collections (keys, values)
 - **Automatic eviction** of LRU items when at capacity
 - **Stale detection** based on lastAccess timestamp
 
 Methods:
+
 - `get(key): Option<T>` - Returns Some(value) or None
 - `set(key, value)` - Add/update with LRU tracking
 - `getLRU(): Option<string>` - Get least recently used key
@@ -132,6 +138,7 @@ Methods:
 #### 3. Error Utilities (src/utils/errors.ts)
 
 Functional error handling without exceptions:
+
 - `createError()`: Create `Either<DuckPondError, never>` (Left)
 - `success<T>(value)`: Create `Either<DuckPondError, T>` (Right)
 - `toDuckPondError()`: Convert unknown errors to DuckPondError
@@ -141,6 +148,7 @@ Functional error handling without exceptions:
 #### 4. Types (src/types.ts)
 
 Comprehensive TypeScript definitions:
+
 - `DuckPondConfig`: R2/S3 configuration with defaults
 - `DuckPondResult<T>`: Sync Either<Error, T>
 - `AsyncDuckPondResult<T>`: Promise<Either<Error, T>>
@@ -155,20 +163,25 @@ Comprehensive TypeScript definitions:
 
 ```typescript
 // ✅ Good: Option for cache lookup
-const cached = this.cache.get(userId)  // Returns Option<UserDatabase>
+const cached = this.cache.get(userId) // Returns Option<UserDatabase>
 if (cached.isSome()) {
   const userDb = cached.fold(
-    () => { throw new Error("Unreachable") },
-    db => db
+    () => {
+      throw new Error("Unreachable")
+    },
+    (db) => db,
   )
 }
 
 // ❌ Bad: Don't use null/undefined
-const cached = this.cache.get(userId)  // Would return UserDatabase | null
-if (cached !== null) { /* ... */ }
+const cached = this.cache.get(userId) // Would return UserDatabase | null
+if (cached !== null) {
+  /* ... */
+}
 ```
 
 **Key methods**:
+
 - `Option(value)` - Constructor (NOT `Option.some()`)
 - `.isSome()` / `.isNone()` - Type guards
 - `.fold(onNone, onSome)` - Pattern matching
@@ -184,21 +197,22 @@ if (cached !== null) { /* ... */ }
 async function query(sql: string): AsyncDuckPondResult<Row[]> {
   try {
     const rows = await conn.run(sql)
-    return success(rows)  // Right
+    return success(rows) // Right
   } catch (error) {
-    return Errors.queryExecutionError(error.message, sql, error)  // Left
+    return Errors.queryExecutionError(error.message, sql, error) // Left
   }
 }
 
 // Usage with fold()
-const result = await query('SELECT * FROM users')
+const result = await query("SELECT * FROM users")
 result.fold(
-  error => console.error(error.message),  // Left case
-  rows => console.log(rows)                // Right case
+  (error) => console.error(error.message), // Left case
+  (rows) => console.log(rows), // Right case
 )
 ```
 
 **Key methods**:
+
 - `Left(error)` - Create error (left) side
 - `Right(value)` - Create success (right) side
 - `.isLeft()` / `.isRight()` - Type guards
@@ -215,7 +229,7 @@ result.fold(
 async function bad(): AsyncDuckPondResult<void> {
   return Try(async () => {
     await someAsyncOp()
-  }).toEither()  // Returns Try<Promise<void>>, not Promise<Either>
+  }).toEither() // Returns Try<Promise<void>>, not Promise<Either>
 }
 
 // ✅ Correct: Use try/catch for async
@@ -237,10 +251,11 @@ Use Try only for synchronous operations.
 
 ```typescript
 // ✅ Good: List for cache keys
-const keys = this.cache.keys()  // Returns List<string>
-keys.map(id => parseInt(id))
-    .filter(num => num > 100)
-    .toArray()  // Convert back to native array
+const keys = this.cache.keys() // Returns List<string>
+keys
+  .map((id) => parseInt(id))
+  .filter((num) => num > 100)
+  .toArray() // Convert back to native array
 
 // Note: List doesn't have sortBy()
 const values = this.values().toArray()
@@ -248,6 +263,7 @@ const sorted = values.sort((a, b) => a.lastAccess.getTime() - b.lastAccess.getTi
 ```
 
 **Key methods**:
+
 - `List(array)` - Constructor
 - `.map(fn)` - Transform elements
 - `.filter(fn)` - Filter elements
@@ -267,7 +283,7 @@ const conn = await instance.connect()
 // No need to call conn.close() - managed automatically
 
 // ❌ Wrong: Don't try to close connections
-await conn.close()  // Method doesn't exist!
+await conn.close() // Method doesn't exist!
 ```
 
 ### Query Results
@@ -275,13 +291,13 @@ await conn.close()  // Method doesn't exist!
 ```typescript
 // ✅ Correct: Use getRowObjects() for column name mapping
 const resultObj = await conn.run(sql)
-const rows = await resultObj.getRowObjects()  // Returns [{col: val}, ...]
+const rows = await resultObj.getRowObjects() // Returns [{col: val}, ...]
 
 // ❌ Wrong: getRows() returns arrays without column names
-const rows = await resultObj.getRows()  // Returns [[val1, val2], ...]
+const rows = await resultObj.getRows() // Returns [[val1, val2], ...]
 
 // ❌ Wrong: getColumns() returns empty array
-const columns = await resultObj.getColumns()  // Returns []
+const columns = await resultObj.getColumns() // Returns []
 ```
 
 ## Type System Gotchas
@@ -310,11 +326,11 @@ When checking `isLeft()` in async functions:
 
 ```typescript
 async function example(): AsyncDuckPondResult<Data> {
-  const result = await getConnection()  // Returns Either<E, Connection>
+  const result = await getConnection() // Returns Either<E, Connection>
 
   if (result.isLeft()) {
     // ❌ Wrong: Type mismatch
-    return result  // Either<E, Connection> vs Promise<Either<E, Data>>
+    return result // Either<E, Connection> vs Promise<Either<E, Data>>
 
     // ✅ Fix: Cast to any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -323,8 +339,10 @@ async function example(): AsyncDuckPondResult<Data> {
 
   // Extract right value
   const conn = result.fold(
-    () => { throw new Error("Unreachable") },
-    c => c
+    () => {
+      throw new Error("Unreachable")
+    },
+    (c) => c,
   )
 }
 ```
@@ -340,8 +358,8 @@ export function success<T = void>(value?: T): Either<DuckPondError, T extends vo
 }
 
 // Usage
-return success(undefined)  // Either<E, void>
-return success(data)       // Either<E, Data>
+return success(undefined) // Either<E, void>
+return success(data) // Either<E, Data>
 ```
 
 ## Testing Strategy
@@ -395,7 +413,10 @@ describe("Feature", () => {
     const result = await pond.query("user", "SELECT * FROM missing")
 
     expect(result.isLeft()).toBe(true)
-    const error = result.fold(err => err, () => null)
+    const error = result.fold(
+      (err) => err,
+      () => null,
+    )
     expect(error?.code).toBe(ErrorCode.QUERY_EXECUTION_ERROR)
   })
 })
@@ -406,19 +427,26 @@ describe("Feature", () => {
 ### Pattern 1: Initialize and Query
 
 ```typescript
-const pond = new DuckPond({ r2: { /* ... */ } })
+const pond = new DuckPond({
+  r2: {
+    /* ... */
+  },
+})
 
 const initResult = await pond.init()
 if (initResult.isLeft()) {
-  const error = initResult.fold(err => err, () => null)
+  const error = initResult.fold(
+    (err) => err,
+    () => null,
+  )
   console.error(`Init failed: ${error?.message}`)
   process.exit(1)
 }
 
-const queryResult = await pond.query<Row>('user123', 'SELECT * FROM data')
+const queryResult = await pond.query<Row>("user123", "SELECT * FROM data")
 queryResult.fold(
-  error => console.error(error.message),
-  rows => processRows(rows)
+  (error) => console.error(error.message),
+  (rows) => processRows(rows),
 )
 
 await pond.close()
@@ -427,14 +455,14 @@ await pond.close()
 ### Pattern 2: Error Context Extraction
 
 ```typescript
-const result = await pond.query('user', sql)
+const result = await pond.query("user", sql)
 result.fold(
-  error => {
+  (error) => {
     console.error(`[${error.code}] ${error.message}`)
-    if (error.cause) console.error('Cause:', error.cause.message)
-    if (error.context?.sql) console.error('SQL:', error.context.sql)
+    if (error.cause) console.error("Cause:", error.cause.message)
+    if (error.context?.sql) console.error("SQL:", error.context.sql)
   },
-  rows => console.log(`Got ${rows.length} rows`)
+  (rows) => console.log(`Got ${rows.length} rows`),
 )
 ```
 
@@ -447,10 +475,10 @@ cached.fold(
     // User not in cache - load from storage
     return this.loadUser(userId)
   },
-  userDb => {
+  (userDb) => {
     // User found - return existing connection
     return Promise.resolve(success(userDb.connection))
-  }
+  },
 )
 ```
 
