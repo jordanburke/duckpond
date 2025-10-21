@@ -10,8 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **DuckDB node-api** (v1.4.1-r.4): In-process analytical database
 - **functype** (v0.16.0): Functional programming utilities for TypeScript
 - **TypeScript** (v5.9.3): Full type safety with strict mode
+- **Node.js** (v22.x): Minimum required version
 - **Vitest**: Testing framework with 14 comprehensive tests
 - **tsup**: Fast bundler for ESM/CJS dual output
+- **pnpm**: Package manager (v10.18.3+)
 
 ## Development Commands
 
@@ -43,6 +45,36 @@ pnpm validate  # 🚀 Format, lint, test, and build everything
 - `pnpm build` - Production build (outputs to `dist/`)
 - `pnpm dev` - Development build with watch mode
 - `pnpm build:watch` - Alias for dev
+
+### Development Setup
+
+```bash
+# Install dependencies (uses pnpm 10.18.3+)
+pnpm install
+
+# Run in development mode with auto-rebuild
+pnpm dev
+
+# Run tests in watch mode while developing
+pnpm test:watch
+```
+
+### Debugging
+
+Enable debug logging by setting the `DEBUG` environment variable:
+
+```bash
+# Enable all DuckPond debug logs
+DEBUG=duckpond:* pnpm test
+
+# Enable specific modules
+DEBUG=duckpond:main pnpm test
+DEBUG=duckpond:cache pnpm test
+```
+
+Debug namespaces (see src/utils/logger.ts):
+- `duckpond:main` - DuckPond class operations
+- `duckpond:cache` - LRU cache operations
 
 ## Architecture
 
@@ -444,6 +476,23 @@ cached.fold(
 - **Environment**: Node.js
 - **Coverage**: v8 provider with text/json/html reports
 - **UI**: Available via `pnpm test:ui`
+
+### ESLint (eslint.config.mjs)
+
+- **Flat config format**: Using ESLint 9.x flat config
+- **Plugins**: TypeScript, Prettier, simple-import-sort
+- **Import sorting**: Enforced with simple-import-sort plugin
+- **Prettier integration**: Runs as ESLint rule for consistency
+
+## CI/CD
+
+GitHub Actions workflows run automatically on push/PR to `main`:
+
+- **Node.js CI**: Runs `pnpm validate` (format, lint, test, build)
+- **CodeQL**: Security scanning for vulnerabilities
+- **Node version**: Tests run on Node 22.x
+
+View status badges at the top of README.md or check `.github/workflows/`.
 
 ## Publishing Checklist
 
