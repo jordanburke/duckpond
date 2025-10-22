@@ -9,6 +9,7 @@ import type {
   CreateUserOptions,
   DuckPondConfig,
   DuckPondResult,
+  ListUsersResult,
   ResolvedConfig,
   Schema,
   UserDatabase,
@@ -425,6 +426,22 @@ export class DuckPond {
       storageUsage: 0, // TODO: Calculate from R2
       queryCount: 0, // TODO: Track queries
     })
+  }
+
+  /**
+   * Get list of all currently cached users
+   * Returns a List of user IDs and cache statistics
+   */
+  listUsers(): ListUsersResult {
+    const stats = this.cache.getStats()
+    const keys = this.cache.keys()
+
+    return {
+      users: keys, // Already returns List<string>
+      count: stats.size,
+      maxActiveUsers: stats.maxSize,
+      utilizationPercent: stats.utilizationPercent,
+    }
   }
 
   /**

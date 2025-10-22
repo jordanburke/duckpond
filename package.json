@@ -1,6 +1,6 @@
 {
   "name": "duckpond",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-tenant DuckDB manager with R2/S3 storage and functional programming patterns",
   "keywords": [
     "duckdb",

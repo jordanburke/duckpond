@@ -1,5 +1,6 @@
 import type { DuckDBConnection } from "@duckdb/node-api"
 import type { Either } from "functype/either"
+import type { List } from "functype/list"
 import type { Option } from "functype/option"
 
 /**
@@ -194,3 +195,13 @@ export type ResolvedConfig = Required<
     s3: DuckPondConfig["s3"]
   }
 >
+
+/**
+ * Result of listUsers operation
+ */
+export interface ListUsersResult {
+  users: List<string> // List of cached user IDs (functype immutable list)
+  count: number // Number of cached users
+  maxActiveUsers: number // Maximum cache capacity
+  utilizationPercent: number // Cache utilization (0-100)
+}

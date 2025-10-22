@@ -42,6 +42,7 @@ export type {
   DuckPondMetrics,
   DuckPondResult,
   FileInfo,
+  ListUsersResult,
   QueryResult,
   ResolvedConfig,
   Schema,

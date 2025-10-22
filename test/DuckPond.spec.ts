@@ -85,6 +85,55 @@ describe("DuckPond", () => {
       expect(stats?.userId).toBe("user1")
       expect(stats?.attached).toBe(false)
     })
+
+    test("should list no users when cache is empty", () => {
+      const result = pond.listUsers()
+
+      expect(result.users.toArray()).toEqual([])
+      expect(result.count).toBe(0)
+      expect(result.maxActiveUsers).toBe(3)
+      expect(result.utilizationPercent).toBe(0)
+    })
+
+    test("should list cached users", async () => {
+      // Attach some users
+      await pond.query("user1", "SELECT 1")
+      await pond.query("user2", "SELECT 1")
+
+      const result = pond.listUsers()
+
+      expect(result.count).toBe(2)
+      expect(result.maxActiveUsers).toBe(3)
+      expect(result.utilizationPercent).toBeCloseTo(66.67, 1)
+
+      // Verify users list contains both user IDs
+      const userIds = result.users.toArray()
+      expect(userIds).toContain("user1")
+      expect(userIds).toContain("user2")
+    })
+
+    test("should reflect cache utilization correctly", async () => {
+      // Detach all users first
+      await pond.detachUser("user1")
+      await pond.detachUser("user2")
+
+      // Attach 3 users (at capacity)
+      await pond.query("user1", "SELECT 1")
+      await pond.query("user2", "SELECT 1")
+      await pond.query("user3", "SELECT 1")
+
+      const result = pond.listUsers()
+
+      expect(result.count).toBe(3)
+      expect(result.maxActiveUsers).toBe(3)
+      expect(result.utilizationPercent).toBe(100)
+
+      const userIds = result.users.toArray()
+      expect(userIds).toHaveLength(3)
+      expect(userIds).toContain("user1")
+      expect(userIds).toContain("user2")
+      expect(userIds).toContain("user3")
+    })
   })
 
   describe("Query Execution", () => {
