@@ -77,6 +77,6 @@
     "@duckdb/node-api": "1.4.1-r.4",
     "@duckdb/node-bindings": "1.4.1-r.4",
     "debug": "^4.4.3",
-    "functype": "^0.16.0"
+    "functype": "^0.17.0"
   }
 }
