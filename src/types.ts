@@ -29,6 +29,9 @@ export interface DuckPondConfig {
   threads?: number // Default: 4
   tempDir?: string // Default: '/tmp/duckpond'
 
+  // Local Storage
+  dataDir?: string // Directory for persistent database files (enables local storage when set)
+
   // Cache Settings
   maxActiveUsers?: number // Default: 10
   evictionTimeout?: number // Default: 300000 (5 min in ms)
@@ -190,9 +193,10 @@ export enum ErrorCode {
  * Configuration with defaults applied
  */
 export type ResolvedConfig = Required<
-  Omit<DuckPondConfig, "r2" | "s3"> & {
+  Omit<DuckPondConfig, "r2" | "s3" | "dataDir"> & {
     r2: DuckPondConfig["r2"]
     s3: DuckPondConfig["s3"]
+    dataDir: DuckPondConfig["dataDir"]
   }
 >
 

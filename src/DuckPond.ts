@@ -1,7 +1,9 @@
 import { type DuckDBConnection, DuckDBInstance } from "@duckdb/node-api"
+import * as fs from "fs"
 import { Either, Left, Right } from "functype"
 import { Option } from "functype"
 import { Try } from "functype"
+import * as path from "path"
 
 import { LRUCache } from "./cache/LRUCache"
 import type {
@@ -50,9 +52,14 @@ const log = loggers.main
  * )
  * ```
  */
+/** Extended user database with per-user instance for local storage */
+interface UserDatabaseWithInstance extends UserDatabase {
+  instance?: DuckDBInstance
+}
+
 export class DuckPond {
   private instance: Option<DuckDBInstance> = Option.none()
-  private cache: LRUCache<UserDatabase>
+  private cache: LRUCache<UserDatabaseWithInstance>
   private config: ResolvedConfig
   private evictionTimer: Option<NodeJS.Timeout> = Option.none()
   private initialized = false
@@ -68,6 +75,7 @@ export class DuckPond {
       cacheType: config.cacheType || "disk",
       cacheDir: config.cacheDir || "/tmp/duckpond-cache",
       strategy: config.strategy || "parquet",
+      dataDir: config.dataDir,
       r2: config.r2,
       s3: config.s3,
     }
@@ -79,6 +87,8 @@ export class DuckPond {
       threads: this.config.threads,
       maxActiveUsers: this.config.maxActiveUsers,
       strategy: this.config.strategy,
+      dataDir: this.config.dataDir,
+      storageMode: this.config.dataDir ? "local" : this.config.r2 ? "r2" : this.config.s3 ? "s3" : "memory",
     })
   }
 
@@ -95,18 +105,27 @@ export class DuckPond {
     log("Initializing DuckPond...")
 
     try {
-      // Create DuckDB instance
-      const instance = await DuckDBInstance.create(":memory:")
-      this.instance = Option(instance)
+      // Create dataDir if local storage is enabled
+      if (this.config.dataDir) {
+        await this.ensureDataDir()
+        log(`Local storage enabled: ${this.config.dataDir}`)
+      }
 
-      // Setup cloud storage
-      const setupResult = await this.setupCloudStorage()
-      if (setupResult.isLeft()) {
-        const error = setupResult.fold(
-          (err) => err,
-          () => null,
-        )
-        throw new Error(error?.message || "Cloud storage setup failed")
+      // For cloud storage or memory mode, create a shared instance
+      // For local storage, we create per-user instances in getUserConnection
+      if (!this.config.dataDir) {
+        const instance = await DuckDBInstance.create(":memory:")
+        this.instance = Option(instance)
+
+        // Setup cloud storage
+        const setupResult = await this.setupCloudStorage()
+        if (setupResult.isLeft()) {
+          const error = setupResult.fold(
+            (err) => err,
+            () => null,
+          )
+          throw new Error(error?.message || "Cloud storage setup failed")
+        }
       }
 
       // Start eviction timer
@@ -118,6 +137,33 @@ export class DuckPond {
     } catch (error) {
       return Left(toDuckPondError(error, ErrorCode.CONNECTION_FAILED))
     }
+  }
+
+  /**
+   * Ensure the data directory exists
+   */
+  private async ensureDataDir(): Promise<void> {
+    if (!this.config.dataDir) return
+
+    try {
+      await fs.promises.mkdir(this.config.dataDir, { recursive: true })
+      log(`Data directory ready: ${this.config.dataDir}`)
+    } catch (error) {
+      log(`Failed to create data directory: ${error}`)
+      throw error
+    }
+  }
+
+  /**
+   * Get the database file path for a user
+   */
+  private getUserDbPath(userId: string): string {
+    if (!this.config.dataDir) {
+      throw new Error("dataDir not configured")
+    }
+    // Sanitize userId for filesystem safety
+    const safeUserId = userId.replace(/[^a-zA-Z0-9_-]/g, "_")
+    return path.join(this.config.dataDir, `${safeUserId}.duckdb`)
   }
 
   /**
@@ -195,7 +241,7 @@ export class DuckPond {
 
   /**
    * Get a connection for a user
-   * Loads from cache or attaches new database
+   * Loads from cache or creates new database
    */
   async getUserConnection(userId: string): AsyncDuckPondResult<DuckDBConnection> {
     if (!this.initialized) {
@@ -221,6 +267,12 @@ export class DuckPond {
       await this.evictLRU()
     }
 
+    // Local storage mode: create per-user file-based instance
+    if (this.config.dataDir) {
+      return this.createLocalUserConnection(userId)
+    }
+
+    // Cloud/memory mode: use shared instance
     if (this.instance.isNone()) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return Errors.notInitialized() as any
@@ -253,6 +305,40 @@ export class DuckPond {
 
     log(`Loaded database for user: ${userId}`)
     return success(conn)
+  }
+
+  /**
+   * Create a local file-based database connection for a user
+   */
+  private async createLocalUserConnection(userId: string): AsyncDuckPondResult<DuckDBConnection> {
+    try {
+      const dbPath = this.getUserDbPath(userId)
+      log(`Creating/opening local database for user ${userId}: ${dbPath}`)
+
+      // Create per-user DuckDB instance with file path
+      const userInstance = await DuckDBInstance.create(dbPath)
+      const conn = await userInstance.connect()
+
+      // Configure performance settings
+      await conn.run(`
+        SET memory_limit='${this.config.memoryLimit}';
+        SET threads=${this.config.threads};
+      `)
+
+      // Add to cache with instance reference
+      this.cache.set(userId, {
+        userId,
+        connection: conn,
+        lastAccess: new Date(),
+        attached: true,
+        instance: userInstance,
+      })
+
+      log(`Local database ready for user: ${userId}`)
+      return success(conn)
+    } catch (error) {
+      return Left(toDuckPondError(error, ErrorCode.CONNECTION_FAILED))
+    }
   }
 
   /**
@@ -352,14 +438,19 @@ export class DuckPond {
         throw new Error("Unexpected: cached should be Some")
       },
       (db) => db,
-    )
+    ) as UserDatabaseWithInstance
 
     try {
-      if (this.config.strategy === "duckdb") {
+      // For local storage, close the per-user instance
+      if (this.config.dataDir && userDb.instance) {
+        // Close the instance (this also closes connections)
+        userDb.instance.closeSync()
+        log(`Closed local database instance for user: ${userId}`)
+      } else if (this.config.strategy === "duckdb" && !this.config.dataDir) {
+        // Cloud storage: detach the attached database
         await userDb.connection.run(`DETACH user_${userId}`)
       }
-      // Note: DuckDB connections don't have a close() method in node-api
-      // They are managed by the instance
+      // Note: For shared instance mode, connections are managed by the instance
       this.cache.delete(userId)
       log(`Detached user: ${userId}`)
       return success(undefined)
