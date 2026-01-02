@@ -19,6 +19,9 @@ importers:
       functype:
         specifier: ^0.41.3
         version: 0.41.3
+      lru-cache:
+        specifier: ^11.2.4
+        version: 11.2.4
     devDependencies:
       "@eslint/eslintrc":
         specifier: ^3.3.3

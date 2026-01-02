@@ -1,5 +1,6 @@
 import { List } from "functype/list"
 import { Option } from "functype/option"
+import { LRUCache as LRU } from "lru-cache"
 
 import type { UserDatabase } from "../types"
 import { loggers } from "../utils/logger"
@@ -7,18 +8,63 @@ import { loggers } from "../utils/logger"
 const log = loggers.cache
 
 /**
- * LRU Cache for managing active user database connections
+ * Cache options for the LRU cache
+ */
+export interface LRUCacheOptions<T extends UserDatabase> {
+  /** Maximum number of items in cache */
+  maxSize: number
+  /** Time-to-live in milliseconds (optional, defaults to no TTL) */
+  ttl?: number
+  /** Callback when items are evicted/disposed */
+  dispose?: (value: T, key: string, reason: "evict" | "set" | "delete" | "stale") => void
+}
+
+/**
+ * Functype-compatible LRU Cache wrapper
  *
- * Uses functype Option for safe null handling
+ * Wraps the battle-tested lru-cache package with functype Option<T> and List<T>
+ * for type-safe null handling and immutable collections.
+ *
+ * @example
+ * ```typescript
+ * const cache = new LRUCache<UserDatabase>({
+ *   maxSize: 100,
+ *   ttl: 1000 * 60 * 30, // 30 min
+ *   dispose: (value, key, reason) => {
+ *     console.log(`Evicting ${key}: ${reason}`)
+ *   }
+ * })
+ *
+ * cache.set("user1", userDb)
+ * const result = cache.get("user1") // Option<UserDatabase>
+ * result.fold(
+ *   () => console.log("Not found"),
+ *   (db) => console.log("Found:", db.userId)
+ * )
+ * ```
  */
 export class LRUCache<T extends UserDatabase> {
-  private cache: Map<string, T>
+  private cache: LRU<string, T>
   private readonly maxSize: number
 
-  constructor(maxSize: number = 10) {
-    this.cache = new Map()
-    this.maxSize = maxSize
-    log(`Created LRU cache with maxSize=${maxSize}`)
+  constructor(options: number | LRUCacheOptions<T>) {
+    const opts = typeof options === "number" ? { maxSize: options } : options
+
+    this.maxSize = opts.maxSize
+
+    this.cache = new LRU<string, T>({
+      max: opts.maxSize,
+      ttl: opts.ttl,
+      updateAgeOnGet: true, // Reset TTL on access
+      dispose: opts.dispose
+        ? (value, key, reason) => {
+            log(`Disposing ${key} (reason: ${reason})`)
+            opts.dispose!(value, key, reason as "evict" | "set" | "delete" | "stale")
+          }
+        : undefined,
+    })
+
+    log(`Created LRU cache with maxSize=${opts.maxSize}${opts.ttl ? `, ttl=${opts.ttl}ms` : ""}`)
   }
 
   /**
@@ -26,31 +72,21 @@ export class LRUCache<T extends UserDatabase> {
    * Returns Option.Some(value) if found, Option.None otherwise
    */
   get(key: string): Option<T> {
-    return Option(this.cache.get(key)).map((item) => {
-      // Move to end (most recently used)
-      this.cache.delete(key)
-      this.cache.set(key, item)
-      item.lastAccess = new Date()
+    const value = this.cache.get(key)
+    if (value !== undefined) {
+      // Update lastAccess for stats tracking
+      value.lastAccess = new Date()
       log(`Cache hit: ${key}`)
-      return item
-    })
+      return Option(value)
+    }
+    return Option.none()
   }
 
   /**
    * Set a value in the cache
-   * Evicts LRU item if at capacity
+   * Automatically evicts LRU item if at capacity
    */
   set(key: string, value: T): void {
-    // Remove if exists (to update position)
-    if (this.cache.has(key)) {
-      this.cache.delete(key)
-    }
-
-    // Evict LRU if at capacity
-    if (this.cache.size >= this.maxSize) {
-      this.evictLRU()
-    }
-
     value.lastAccess = new Date()
     this.cache.set(key, value)
     log(`Cache set: ${key} (size=${this.cache.size})`)
@@ -68,7 +104,7 @@ export class LRUCache<T extends UserDatabase> {
   }
 
   /**
-   * Check if a key exists in the cache
+   * Check if a key exists in the cache (without updating recency)
    */
   has(key: string): boolean {
     return this.cache.has(key)
@@ -77,33 +113,33 @@ export class LRUCache<T extends UserDatabase> {
   /**
    * Get the least recently used key
    * Returns Option.Some(key) if cache not empty, Option.None otherwise
+   *
+   * Note: lru-cache maintains LRU order, so we iterate from oldest to newest
    */
   getLRU(): Option<string> {
-    const firstKey = this.cache.keys().next().value
-    return Option(firstKey)
-  }
-
-  /**
-   * Evict the least recently used item
-   */
-  private evictLRU(): void {
-    this.getLRU().forEach((key) => {
-      log(`Evicting LRU: ${key}`)
-      this.cache.delete(key)
-    })
+    // lru-cache keys() iterates from most recent to least recent by default
+    // Use rkeys() to get reverse (LRU first) order
+    const result = this.cache.rkeys().next()
+    if (result.done || result.value === undefined) {
+      return Option.none()
+    }
+    return Option(result.value)
   }
 
   /**
    * Get all keys for items older than the timeout
    * Returns a List of stale keys (functype immutable list)
+   *
+   * Note: If using TTL, stale items are automatically handled by the cache.
+   * This method is for manual staleness checks based on lastAccess.
    */
   getStale(timeoutMs: number): List<string> {
     const now = Date.now()
     const staleKeys: string[] = []
 
-    for (const [key, value] of this.cache.entries()) {
-      const age = now - value.lastAccess.getTime()
-      if (age > timeoutMs) {
+    for (const key of this.cache.keys()) {
+      const value = this.cache.peek(key) // peek doesn't update recency
+      if (value && now - value.lastAccess.getTime() > timeoutMs) {
         staleKeys.push(key)
       }
     }
@@ -124,6 +160,7 @@ export class LRUCache<T extends UserDatabase> {
 
   /**
    * Clear all items from the cache
+   * Note: This triggers dispose callbacks for each item
    */
   clear(): void {
     const size = this.cache.size
@@ -143,6 +180,14 @@ export class LRUCache<T extends UserDatabase> {
    */
   keys(): List<string> {
     return List(Array.from(this.cache.keys()))
+  }
+
+  /**
+   * Purge stale items (TTL expired)
+   * Call this to force cleanup of expired items
+   */
+  purgeStale(): void {
+    this.cache.purgeStale()
   }
 
   /**

@@ -58,7 +58,7 @@ export { createError, Errors, formatError, success, toDuckPondError } from "./ut
 export { createLogger, loggers } from "./utils/logger"
 
 // Cache
-export { LRUCache } from "./cache/LRUCache"
+export { LRUCache, type LRUCacheOptions } from "./cache/LRUCache"
 
 // Re-export functype for convenience
 export { Either, Left, Right } from "functype/either"
