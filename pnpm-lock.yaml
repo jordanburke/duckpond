@@ -27,8 +27,8 @@ importers:
         specifier: ~24.10.4
         version: 24.10.4
       ts-builds:
-        specifier: ^2.0.1
-        version: 2.0.1(tsdown@0.18.4(synckit@0.11.11)(typescript@5.9.3))(tsx@4.21.0)
+        specifier: ^2.1.0
+        version: 2.1.0(tsdown@0.18.4(synckit@0.11.11)(typescript@5.9.3))(tsx@4.21.0)
       tsdown:
         specifier: ^0.18.4
         version: 0.18.4(synckit@0.11.11)(typescript@5.9.3)
@@ -2206,9 +2206,9 @@ packages:
     peerDependencies:
       typescript: ">=4.8.4"
 
-  ts-builds@2.0.1:
+  ts-builds@2.1.0:
     resolution:
-      { integrity: sha512-Ji/ImkRm9neDdpQOGZAdfjS/D+S/B2vkp9Sc3+wlcznEJGlf6pjZ4hsFkSMBI7qShLkKAE5P+nKl+/GrgcL/SA== }
+      { integrity: sha512-xVgxRFnupfqZKIKFbBlvu2spsVI/u+kM//95MMDy7Ze/eFe5Dms9O+RRjnhRxodHHL6qT+xdGz+OQVXjcQ2YjQ== }
     hasBin: true
     peerDependencies:
       tsdown: ^0.x
@@ -4252,7 +4252,7 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  ts-builds@2.0.1(tsdown@0.18.4(synckit@0.11.11)(typescript@5.9.3))(tsx@4.21.0):
+  ts-builds@2.1.0(tsdown@0.18.4(synckit@0.11.11)(typescript@5.9.3))(tsx@4.21.0):
     dependencies:
       "@eslint/eslintrc": 3.3.3
       "@eslint/js": 9.39.2
