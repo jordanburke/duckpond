@@ -61,7 +61,6 @@ export class DuckPond {
   private instance: Option<DuckDBInstance> = Option.none()
   private cache: LRUCache<UserDatabaseWithInstance>
   private config: ResolvedConfig
-  private evictionTimer: Option<NodeJS.Timeout> = Option.none()
   private initialized = false
 
   constructor(config: DuckPondConfig) {
@@ -80,7 +79,14 @@ export class DuckPond {
       s3: config.s3,
     }
 
-    this.cache = new LRUCache(this.config.maxActiveUsers)
+    // Create cache with TTL-based eviction and automatic cleanup
+    this.cache = new LRUCache({
+      maxSize: this.config.maxActiveUsers,
+      ttl: this.config.evictionTimeout,
+      dispose: (userDb, userId, reason) => {
+        this.cleanupUserResources(userDb, userId, reason)
+      },
+    })
 
     log("DuckPond created with config:", {
       memoryLimit: this.config.memoryLimit,
@@ -90,6 +96,36 @@ export class DuckPond {
       dataDir: this.config.dataDir,
       storageMode: this.config.dataDir ? "local" : this.config.r2 ? "r2" : this.config.s3 ? "s3" : "memory",
     })
+  }
+
+  /**
+   * Cleanup resources when a user is evicted from cache
+   * Called automatically by LRU cache dispose callback
+   */
+  private cleanupUserResources(
+    userDb: UserDatabaseWithInstance,
+    userId: string,
+    reason: "evict" | "set" | "delete" | "stale",
+  ): void {
+    log(`Cleaning up user ${userId} (reason: ${reason})`)
+
+    // For local storage, close the per-user instance synchronously
+    if (this.config.dataDir && userDb.instance) {
+      try {
+        userDb.instance.closeSync()
+        log(`Closed local database instance for user: ${userId}`)
+      } catch (error) {
+        log(`Error closing instance for user ${userId}:`, error)
+      }
+    }
+
+    // For cloud duckdb strategy, detach the database (fire-and-forget)
+    if (this.config.strategy === "duckdb" && !this.config.dataDir && userDb.attached) {
+      userDb.connection
+        .run(`DETACH user_${userId}`)
+        .then(() => log(`Detached cloud database for user: ${userId}`))
+        .catch((error) => log(`Error detaching database for user ${userId}:`, error))
+    }
   }
 
   /**
@@ -127,9 +163,6 @@ export class DuckPond {
           throw new Error(error?.message || "Cloud storage setup failed")
         }
       }
-
-      // Start eviction timer
-      this.startEvictionTimer()
 
       this.initialized = true
       log("DuckPond initialized successfully")
@@ -262,10 +295,7 @@ export class DuckPond {
 
     log(`Loading database for user: ${userId}`)
 
-    // Evict if at capacity
-    if (this.cache.size() >= this.config.maxActiveUsers) {
-      await this.evictLRU()
-    }
+    // Note: LRU cache automatically evicts when at capacity via dispose callback
 
     // Local storage mode: create per-user file-based instance
     if (this.config.dataDir) {
@@ -422,72 +452,18 @@ export class DuckPond {
 
   /**
    * Detach a user's database and free resources
+   * Cleanup happens automatically via the cache dispose callback
    */
-  async detachUser(userId: string): AsyncDuckPondResult<void> {
-    const cached = this.cache.get(userId)
-
-    if (cached.isNone()) {
+  detachUser(userId: string): DuckPondResult<void> {
+    if (!this.cache.has(userId)) {
       log(`User not attached: ${userId}`)
       return success(undefined)
     }
 
     log(`Detaching user: ${userId}`)
-
-    const userDb = cached.fold(
-      () => {
-        throw new Error("Unexpected: cached should be Some")
-      },
-      (db) => db,
-    ) as UserDatabaseWithInstance
-
-    try {
-      // For local storage, close the per-user instance
-      if (this.config.dataDir && userDb.instance) {
-        // Close the instance (this also closes connections)
-        userDb.instance.closeSync()
-        log(`Closed local database instance for user: ${userId}`)
-      } else if (this.config.strategy === "duckdb" && !this.config.dataDir) {
-        // Cloud storage: detach the attached database
-        await userDb.connection.run(`DETACH user_${userId}`)
-      }
-      // Note: For shared instance mode, connections are managed by the instance
-      this.cache.delete(userId)
-      log(`Detached user: ${userId}`)
-      return success(undefined)
-    } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.storageError("Failed to detach user", error as Error) as any
-    }
-  }
-
-  /**
-   * Evict the least recently used user
-   */
-  private async evictLRU(): Promise<void> {
-    this.cache.getLRU().forEach(async (userId) => {
-      log(`Evicting LRU user: ${userId}`)
-      await this.detachUser(userId)
-    })
-  }
-
-  /**
-   * Start background timer to evict idle users
-   */
-  private startEvictionTimer(): void {
-    const timer = setInterval(async () => {
-      const staleUsers = this.cache.getStale(this.config.evictionTimeout)
-
-      staleUsers.forEach(async (userId) => {
-        log(`Evicting idle user: ${userId}`)
-        await this.detachUser(userId)
-      })
-    }, 60000) // Check every minute
-
-    // Don't keep process alive
-    timer.unref()
-
-    this.evictionTimer = Option(timer)
-    log("Eviction timer started")
+    // Delete triggers dispose callback which handles cleanup
+    this.cache.delete(userId)
+    return success(undefined)
   }
 
   /**
@@ -538,16 +514,11 @@ export class DuckPond {
   /**
    * Close DuckPond and cleanup all resources
    */
-  async close(): AsyncDuckPondResult<void> {
+  close(): DuckPondResult<void> {
     log("Closing DuckPond...")
 
-    // Stop eviction timer
-    this.evictionTimer.forEach((timer) => clearInterval(timer))
-
-    // Detach all users
-    const detachPromises = this.cache.keys().map((userId) => this.detachUser(userId.toString()))
-
-    await Promise.all(detachPromises.toArray())
+    // Clear cache - triggers dispose callback for each user
+    this.cache.clear()
 
     // Close instance
     this.instance = Option.none()
