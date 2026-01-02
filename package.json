@@ -20,64 +20,48 @@
     "type": "git",
     "url": "https://github.com/jordanburke/duckpond"
   },
+  "type": "module",
   "scripts": {
-    "validate": "pnpm format && pnpm lint && pnpm test && pnpm build",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint ./src --fix",
-    "lint:check": "eslint ./src",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui",
-    "build": "rimraf dist && cross-env NODE_ENV=production tsup",
-    "build:watch": "tsup --watch",
-    "dev": "tsup --watch",
-    "prepublishOnly": "pnpm validate",
-    "ts-types": "tsc"
+    "validate": "ts-builds validate",
+    "format": "ts-builds format",
+    "format:check": "ts-builds format:check",
+    "lint": "ts-builds lint",
+    "lint:check": "ts-builds lint:check",
+    "typecheck": "ts-builds typecheck",
+    "test": "ts-builds test",
+    "test:watch": "ts-builds test:watch",
+    "test:coverage": "ts-builds test:coverage",
+    "build": "ts-builds build",
+    "dev": "ts-builds dev",
+    "prepublishOnly": "pnpm validate"
   },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3.3.3",
-    "@eslint/js": "^9.39.2",
-    "@types/node": "^22.19.3",
-    "@typescript-eslint/eslint-plugin": "^8.51.0",
-    "@typescript-eslint/parser": "^8.51.0",
-    "@vitest/coverage-v8": "4.0.16",
-    "@vitest/ui": "^4.0.16",
-    "cross-env": "^10.1.0",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.4",
-    "eslint-plugin-simple-import-sort": "^12.1.1",
-    "globals": "^16.5.0",
-    "prettier": "^3.7.4",
-    "rimraf": "^6.1.2",
-    "ts-node": "^10.9.2",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
-  },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs"
-    }
-  },
-  "files": [
-    "lib",
-    "dist"
-  ],
-  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a",
   "dependencies": {
     "@duckdb/node-api": "1.4.3-r.2",
     "@duckdb/node-bindings": "1.4.3-r.2",
     "debug": "^4.4.3",
     "functype": "^0.41.3",
     "lru-cache": "^11.2.4"
-  }
+  },
+  "devDependencies": {
+    "@types/node": "~24.10.4",
+    "ts-builds": "^2.0.1",
+    "tsdown": "^0.18.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "prettier": "ts-builds/prettier",
+  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a"
 }

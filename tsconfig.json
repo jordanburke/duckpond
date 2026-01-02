@@ -1,21 +1,8 @@
 {
+  "extends": "ts-builds/tsconfig",
   "compilerOptions": {
-    "declaration": true,
-    "target": "ESNext",
-    "lib": ["esnext", "dom"],
-    "strict": true,
-    "noImplicitAny": false,
-    "esModuleInterop": true,
-    "moduleResolution": "bundler",
-    "outDir": "lib",
-    "module": "ESNext",
-    "skipLibCheck": true,
     "rootDir": "src",
-    "emitDeclarationOnly": true,
-    "strictPropertyInitialization": false
+    "outDir": "lib"
   },
-  "include": [
-    "src/**/*",
-    "lib/index.d.ts" // declaration file path
-  ]
+  "include": ["src/**/*"]
 }
