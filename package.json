@@ -1,6 +1,6 @@
 {
   "name": "duckpond",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Multi-tenant DuckDB manager with R2/S3 storage and functional programming patterns",
   "keywords": [
     "duckdb",
@@ -36,15 +36,15 @@
     "prepublishOnly": "pnpm validate"
   },
   "dependencies": {
-    "@duckdb/node-api": "1.4.3-r.2",
-    "@duckdb/node-bindings": "1.4.3-r.2",
+    "@duckdb/node-api": "1.4.4-r.1",
+    "@duckdb/node-bindings": "1.4.4-r.1",
     "debug": "^4.4.3",
-    "functype": "^0.41.3",
-    "lru-cache": "^11.2.4"
+    "functype": "^0.46.2",
+    "lru-cache": "^11.2.6"
   },
   "devDependencies": {
-    "@types/node": "~24.10.4",
-    "ts-builds": "^2.1.0",
+    "@types/node": "~24.10.13",
+    "ts-builds": "^2.4.0",
     "tsdown": "^0.18.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
@@ -63,5 +63,5 @@
     "dist"
   ],
   "prettier": "ts-builds/prettier",
-  "packageManager": "pnpm@10.27.0+sha512.72d699da16b1179c14ba9e64dc71c9a40988cbdc65c264cb0e489db7de917f20dcf4d64d8723625f2969ba52d4b7e2a1170682d9ac2a5dcaeaab732b7e16f04a"
+  "packageManager": "pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc"
 }
