@@ -36,18 +36,18 @@
     "prepublishOnly": "pnpm validate"
   },
   "dependencies": {
-    "@duckdb/node-api": "1.4.4-r.1",
-    "@duckdb/node-bindings": "1.4.4-r.1",
+    "@duckdb/node-api": "^1.5.3-r.3",
+    "@duckdb/node-bindings": "^1.5.3-r.3",
     "debug": "^4.4.3",
-    "functype": "^0.46.2",
-    "lru-cache": "^11.2.6"
+    "functype": "^1.3.0",
+    "lru-cache": "^11.5.1"
   },
   "devDependencies": {
-    "@types/node": "~24.10.13",
-    "ts-builds": "^2.4.0",
+    "@types/node": "~24.10.15",
+    "ts-builds": "^2.8.2",
     "tsdown": "^0.18.4",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
