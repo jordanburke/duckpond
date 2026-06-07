@@ -48,8 +48,8 @@ result.fold(
   (rows) => console.log("Results:", rows),
 )
 
-// Cleanup
-await pond.close()
+// Cleanup (synchronous)
+pond.close()
 ```
 
 ## Core Concepts
@@ -77,18 +77,13 @@ result.fold(
   },
 )
 
-// Or check explicitly
+// Or check explicitly — isLeft()/isRight() narrow the type,
+// so `.value` is the error or the rows respectively
 if (result.isLeft()) {
-  const error = result.fold(
-    (err) => err,
-    () => null,
-  )
+  const error = result.value // DuckPondError
   // Handle error
 } else {
-  const rows = result.fold(
-    () => [],
-    (data) => data,
-  )
+  const rows = result.value // T[]
   // Process rows
 }
 ```
@@ -248,20 +243,20 @@ if (pond.isAttached("user123")) {
 }
 ```
 
-#### `async detachUser(userId: string): AsyncDuckPondResult<void>`
+#### `detachUser(userId: string): DuckPondResult<void>`
 
-Manually detach a user's database from the cache.
+Manually detach a user's database from the cache. Synchronous — returns `Either` directly (cleanup runs via the cache dispose callback).
 
 ```typescript
-await pond.detachUser("user123")
+pond.detachUser("user123")
 ```
 
-#### `async close(): AsyncDuckPondResult<void>`
+#### `close(): DuckPondResult<void>`
 
-Close DuckPond and cleanup all resources.
+Close DuckPond and cleanup all resources. Synchronous — returns `Either` directly.
 
 ```typescript
-await pond.close()
+pond.close()
 ```
 
 ### Error Codes
