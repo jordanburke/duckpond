@@ -15,7 +15,7 @@ picked up immediately without publishing.
 ## Quick start
 
 ```bash
-pnpm install          # Node 24 (see .nvmrc), pnpm 10.29.3
+pnpm install          # Node 24 (see .nvmrc), pnpm 11.5.2
 pnpm validate         # turbo run validate across all packages
 pnpm build            # build all packages (library first)
 pnpm dev              # watch mode

@@ -16,10 +16,11 @@
   ],
   "author": "jordan.burke@gmail.com",
   "license": "MIT",
-  "homepage": "https://github.com/jordanburke/duckpond-mcp-server",
+  "homepage": "https://github.com/jordanburke/duckpond/tree/main/packages/duckpond-mcp-server",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jordanburke/duckpond-mcp-server"
+    "url": "https://github.com/jordanburke/duckpond",
+    "directory": "packages/duckpond-mcp-server"
   },
   "type": "module",
   "bin": {
@@ -56,11 +57,10 @@
   },
   "devDependencies": {
     "@types/node": "~24.10.15",
-    "ts-builds": "^2.8.2",
+    "ts-builds": "^3.0.1",
     "tsdown": "^0.22.2",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "vite": "^7.3.5"
+    "typescript": "^6.0.3"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",

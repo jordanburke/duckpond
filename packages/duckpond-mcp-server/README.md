@@ -1,7 +1,7 @@
 # DuckPond MCP Server
 
-[![Node.js CI](https://github.com/jordanburke/duckpond-mcp-server/actions/workflows/node.js.yml/badge.svg)](https://github.com/jordanburke/duckpond-mcp-server/actions/workflows/node.js.yml)
-[![CodeQL](https://github.com/jordanburke/duckpond-mcp-server/actions/workflows/codeql.yml/badge.svg)](https://github.com/jordanburke/duckpond-mcp-server/actions/workflows/codeql.yml)
+[![CI](https://github.com/jordanburke/duckpond/actions/workflows/ci.yml/badge.svg)](https://github.com/jordanburke/duckpond/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/jordanburke/duckpond/actions/workflows/codeql.yml/badge.svg)](https://github.com/jordanburke/duckpond/actions/workflows/codeql.yml)
 
 **Model Context Protocol (MCP) server for multi-tenant DuckDB management with R2/S3 cloud storage.**
 
@@ -506,7 +506,7 @@ The MCP server is a **thin transport layer** over the [duckpond](https://github.
        └───────┬────────┘
                │
        ┌───────▼────────┐
-       │    DuckPond    │  npm: duckpond@^0.1.0
+       │    DuckPond    │  workspace:^ → duckpond
        │ - Multi-tenant │
        │ - LRU Cache    │
        │ - R2/S3        │
@@ -520,11 +520,12 @@ The MCP server is a **thin transport layer** over the [duckpond](https://github.
 
 ### Key Components
 
-- **`src/index.ts`** - CLI entry point, transport selection
-- **`src/server-core.ts`** - DuckPond wrapper with MCP result types
-- **`src/server-stdio.ts`** - stdio transport for Claude Desktop
-- **`src/server-fastmcp.ts`** - HTTP transport with FastMCP
-- **`src/tools/index.ts`** - MCP tool schemas and implementations
+- **`src/index.ts`** - CLI entry point (commander), transport selection
+- **`src/server-core.ts`** - DuckPond wrapper exposing `MCPResult<T>` tool result types
+- **`src/server.ts`** - FastMCP-based HTTP transport with OAuth 2.0 / JWT auth
+- **`src/ui-server.ts`** - Hono server bridging to the built-in DuckDB UI
+- **`src/tools/index.ts`** - MCP tool schemas and implementations (zod)
+- **`src/lib.ts`** - Library exports (`startServer`, hooks) for extending the server (`duckpond-mcp-server/lib`)
 
 ### Error Handling
 
@@ -636,7 +637,7 @@ console.log(`Memory: ${stats.memoryUsage} bytes`)
 
 ## Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+Contributions welcome! This package lives in the [duckpond monorepo](https://github.com/jordanburke/duckpond) — see the monorepo README for development setup. Please ensure `pnpm validate` passes before opening a PR.
 
 ## License
 
@@ -652,4 +653,4 @@ MIT
 
 - **Issues**: [GitHub Issues](https://github.com/jordanburke/duckpond-mcp-server/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/jordanburke/duckpond-mcp-server/discussions)
-- **Documentation**: [docs/](./docs/)
+- **Documentation**: [docs/](https://github.com/jordanburke/duckpond/tree/main/packages/duckpond-mcp-server/docs)

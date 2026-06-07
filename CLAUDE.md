@@ -10,8 +10,8 @@ A pnpm + Turborepo monorepo with two published packages:
 - `packages/duckpond-mcp-server` — the MCP server (npm: `duckpond-mcp-server`)
 
 The server depends on the library via `workspace:^` (symlinked locally; rewritten to
-a real range on publish). Tooling: pnpm 10.29.3, Turborepo, Node 24 (`.nvmrc`),
-TypeScript 6.0.3, ts-builds, tsdown, vitest.
+a real range on publish). Tooling: pnpm 11.5.2, Turborepo, Node 24 (`.nvmrc`),
+TypeScript 6.0.3, ts-builds 3.x, tsdown, vitest.
 
 ## Commands (run from the repo root)
 
