@@ -18,7 +18,8 @@
   "homepage": "https://github.com/jordanburke/duckpond",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jordanburke/duckpond"
+    "url": "https://github.com/jordanburke/duckpond",
+    "directory": "packages/duckpond"
   },
   "type": "module",
   "scripts": {
