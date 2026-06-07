@@ -1,6 +1,6 @@
 # DuckPond
 
-[![Node.js CI](https://github.com/jordanburke/duckpond/actions/workflows/node.js.yml/badge.svg)](https://github.com/jordanburke/duckpond/actions/workflows/node.js.yml)
+[![CI](https://github.com/jordanburke/duckpond/actions/workflows/ci.yml/badge.svg)](https://github.com/jordanburke/duckpond/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/jordanburke/duckpond/actions/workflows/codeql.yml/badge.svg)](https://github.com/jordanburke/duckpond/actions/workflows/codeql.yml)
 
 Multi-tenant DuckDB manager with R2/S3 storage and functional programming patterns.
