@@ -67,8 +67,8 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
       duckpond:
-        specifier: ^0.5.1
-        version: 0.5.1
+        specifier: workspace:^
+        version: link:../duckpond
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -1428,9 +1428,6 @@ packages:
     peerDependenciesMeta:
       oxc-resolver:
         optional: true
-
-  duckpond@0.5.1:
-    resolution: {integrity: sha512-1pp1dv+VN880NhLqVhD0dZM7Fs02dFz42ysPA19odtoallmF/10jGpXtNTeiJGXbqDT5EBuM8va60TYO7oA3QA==}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -3725,16 +3722,6 @@ snapshots:
   diff@4.0.4: {}
 
   dts-resolver@3.0.0: {}
-
-  duckpond@0.5.1:
-    dependencies:
-      '@duckdb/node-api': 1.5.3-r.3
-      '@duckdb/node-bindings': 1.5.3-r.3
-      debug: 4.4.3
-      functype: 1.3.0
-      lru-cache: 11.5.1
-    transitivePeerDependencies:
-      - supports-color
 
   dunder-proto@1.0.1:
     dependencies:
