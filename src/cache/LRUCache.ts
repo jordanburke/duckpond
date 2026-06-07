@@ -120,10 +120,7 @@ export class LRUCache<T extends UserDatabase> {
     // lru-cache keys() iterates from most recent to least recent by default
     // Use rkeys() to get reverse (LRU first) order
     const result = this.cache.rkeys().next()
-    if (result.done || result.value === undefined) {
-      return Option.none()
-    }
-    return Option(result.value)
+    return result.done ? Option.none() : Option(result.value)
   }
 
   /**
@@ -135,20 +132,17 @@ export class LRUCache<T extends UserDatabase> {
    */
   getStale(timeoutMs: number): List<string> {
     const now = Date.now()
-    const staleKeys: string[] = []
 
-    for (const key of this.cache.keys()) {
+    const staleKeys = List(Array.from(this.cache.keys())).filter((key) => {
       const value = this.cache.peek(key) // peek doesn't update recency
-      if (value && now - value.lastAccess.getTime() > timeoutMs) {
-        staleKeys.push(key)
-      }
-    }
+      return value !== undefined && now - value.lastAccess.getTime() > timeoutMs
+    })
 
     if (staleKeys.length > 0) {
       log(`Found ${staleKeys.length} stale items`)
     }
 
-    return List(staleKeys)
+    return staleKeys
   }
 
   /**
@@ -163,7 +157,7 @@ export class LRUCache<T extends UserDatabase> {
    * Note: This triggers dispose callbacks for each item
    */
   clear(): void {
-    const size = this.cache.size
+    const { size } = this.cache
     this.cache.clear()
     log(`Cache cleared (removed ${size} items)`)
   }

@@ -1,7 +1,6 @@
 import type { DuckDBConnection } from "@duckdb/node-api"
 import type { Either } from "functype/either"
 import type { List } from "functype/list"
-import type { Option } from "functype/option"
 
 /**
  * Configuration for DuckPond manager

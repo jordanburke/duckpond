@@ -1,6 +1,7 @@
 import { type Either, Left, Right } from "functype"
 
-import { DuckPondError, ErrorCode } from "../types"
+import type { DuckPondError } from "../types"
+import { ErrorCode } from "../types"
 
 /**
  * Create a DuckPondError as a Left Either
@@ -23,8 +24,7 @@ export function createError(
  * Wrap a value in a Right Either
  */
 export function success<T = void>(value?: T): Either<DuckPondError, T extends void ? void : T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return Right(value) as any
+  return Right(value) as Either<DuckPondError, T extends void ? void : T>
 }
 
 /**

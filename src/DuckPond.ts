@@ -1,19 +1,15 @@
 import { type DuckDBConnection, DuckDBInstance } from "@duckdb/node-api"
 import * as fs from "fs"
-import { Either, Left, Right } from "functype"
-import { Option } from "functype"
-import { Try } from "functype"
+import { Left, Option, Try } from "functype"
 import * as path from "path"
 
 import { LRUCache } from "./cache/LRUCache"
 import type {
   AsyncDuckPondResult,
-  CreateUserOptions,
   DuckPondConfig,
   DuckPondResult,
   ListUsersResult,
   ResolvedConfig,
-  Schema,
   UserDatabase,
   UserStats,
 } from "./types"
@@ -66,14 +62,14 @@ export class DuckPond {
   constructor(config: DuckPondConfig) {
     // Apply defaults
     this.config = {
-      memoryLimit: config.memoryLimit || "4GB",
-      threads: config.threads || 4,
-      tempDir: config.tempDir || "/tmp/duckpond",
-      maxActiveUsers: config.maxActiveUsers || 10,
-      evictionTimeout: config.evictionTimeout || 300000,
-      cacheType: config.cacheType || "disk",
-      cacheDir: config.cacheDir || "/tmp/duckpond-cache",
-      strategy: config.strategy || "parquet",
+      memoryLimit: config.memoryLimit ?? "4GB",
+      threads: config.threads ?? 4,
+      tempDir: config.tempDir ?? "/tmp/duckpond",
+      maxActiveUsers: config.maxActiveUsers ?? 10,
+      evictionTimeout: config.evictionTimeout ?? 300000,
+      cacheType: config.cacheType ?? "disk",
+      cacheDir: config.cacheDir ?? "/tmp/duckpond-cache",
+      strategy: config.strategy ?? "parquet",
       dataDir: config.dataDir,
       r2: config.r2,
       s3: config.s3,
@@ -111,12 +107,11 @@ export class DuckPond {
 
     // For local storage, close the per-user instance synchronously
     if (this.config.dataDir && userDb.instance) {
-      try {
-        userDb.instance.closeSync()
-        log(`Closed local database instance for user: ${userId}`)
-      } catch (error) {
-        log(`Error closing instance for user ${userId}:`, error)
-      }
+      const { instance } = userDb
+      Try(() => instance.closeSync()).fold(
+        (error) => log(`Error closing instance for user ${userId}:`, error),
+        () => log(`Closed local database instance for user: ${userId}`),
+      )
     }
 
     // For cloud duckdb strategy, detach the database (fire-and-forget)
@@ -156,11 +151,7 @@ export class DuckPond {
         // Setup cloud storage
         const setupResult = await this.setupCloudStorage()
         if (setupResult.isLeft()) {
-          const error = setupResult.fold(
-            (err) => err,
-            () => null,
-          )
-          throw new Error(error?.message || "Cloud storage setup failed")
+          return Left(setupResult.value)
         }
       }
 
@@ -204,17 +195,10 @@ export class DuckPond {
    */
   private async setupCloudStorage(): AsyncDuckPondResult<void> {
     if (this.instance.isNone()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.notInitialized() as any
+      return Errors.notInitialized()
     }
 
-    const instance = this.instance.fold(
-      () => {
-        throw new Error("Unexpected: instance should be Some")
-      },
-      (inst) => inst,
-    )
-
+    const instance = this.instance.orThrow(new Error("Unexpected: instance should be Some"))
     const conn = await instance.connect()
 
     try {
@@ -267,8 +251,7 @@ export class DuckPond {
       log("Cloud storage configured successfully")
       return success(undefined)
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.r2ConnectionError("Failed to setup cloud storage", error as Error) as any
+      return Errors.r2ConnectionError("Failed to setup cloud storage", error as Error)
     }
   }
 
@@ -278,19 +261,14 @@ export class DuckPond {
    */
   async getUserConnection(userId: string): AsyncDuckPondResult<DuckDBConnection> {
     if (!this.initialized) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.notInitialized() as any
+      return Errors.notInitialized()
     }
 
     // Check cache
     const cached = this.cache.get(userId)
     if (cached.isSome()) {
       log(`Using cached connection for user: ${userId}`)
-      return cached.fold(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (): AsyncDuckPondResult<DuckDBConnection> => Errors.userNotFound(userId) as any,
-        (userDb): AsyncDuckPondResult<DuckDBConnection> => Promise.resolve(success(userDb.connection)),
-      )
+      return success(cached.value.connection)
     }
 
     log(`Loading database for user: ${userId}`)
@@ -304,25 +282,17 @@ export class DuckPond {
 
     // Cloud/memory mode: use shared instance
     if (this.instance.isNone()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.notInitialized() as any
+      return Errors.notInitialized()
     }
 
-    const instance = this.instance.fold(
-      () => {
-        throw new Error("Unexpected: instance should be Some")
-      },
-      (inst) => inst,
-    )
-
+    const instance = this.instance.orThrow(new Error("Unexpected: instance should be Some"))
     const conn = await instance.connect()
 
     // Attach user's database (strategy-dependent)
     const attachResult = await this.attachUserDatabase(conn, userId)
     if (attachResult.isLeft()) {
       // Note: DuckDB connections are managed by the instance, no need to close
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return attachResult as any
+      return Left(attachResult.value)
     }
 
     // Add to cache
@@ -376,7 +346,7 @@ export class DuckPond {
    */
   private async attachUserDatabase(conn: DuckDBConnection, userId: string): AsyncDuckPondResult<void> {
     try {
-      const bucket = this.config.r2?.bucket || this.config.s3?.bucket
+      const bucket = this.config.r2?.bucket ?? this.config.s3?.bucket
       const protocol = this.config.r2 ? "r2" : "s3"
 
       if (this.config.strategy === "duckdb") {
@@ -388,8 +358,7 @@ export class DuckPond {
       // For parquet strategy, no explicit attach needed
       return success(undefined)
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Errors.storageError("Failed to attach user database", error as Error) as any
+      return Errors.storageError("Failed to attach user database", error as Error)
     }
   }
 
@@ -401,22 +370,15 @@ export class DuckPond {
     const connResult = await this.getUserConnection(userId)
 
     if (connResult.isLeft()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return connResult as any
+      return Left(connResult.value)
     }
 
-    const conn = connResult.fold(
-      () => {
-        throw new Error("Unexpected: connection should be Right")
-      },
-      (c) => c,
-    )
+    const conn = connResult.value
 
     try {
       const resultObj = await conn.run(sql)
-      // DuckDB node-api: use getRowObjects() to get rows as objects
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows = (await (resultObj as any).getRowObjects()) as T[]
+      // DuckDB node-api: use getRowObjects() to get rows as objects (not exposed on the result type)
+      const rows = await (resultObj as unknown as { getRowObjects: () => Promise<T[]> }).getRowObjects()
 
       return success(rows)
     } catch (error) {
@@ -431,16 +393,10 @@ export class DuckPond {
     const connResult = await this.getUserConnection(userId)
 
     if (connResult.isLeft()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return connResult as any
+      return Left(connResult.value)
     }
 
-    const conn = connResult.fold(
-      () => {
-        throw new Error("Unexpected: connection should be Right")
-      },
-      (c) => c,
-    )
+    const conn = connResult.value
 
     try {
       await conn.run(sql)
@@ -476,23 +432,25 @@ export class DuckPond {
   /**
    * Get statistics about a user's database
    */
-  async getUserStats(userId: string): AsyncDuckPondResult<UserStats> {
+  getUserStats(userId: string): AsyncDuckPondResult<UserStats> {
     const cached = this.cache.get(userId)
 
-    return success({
-      userId,
-      attached: cached.isSome(),
-      lastAccess: cached.fold(
-        () => new Date(0),
-        (u) => u.lastAccess,
-      ),
-      memoryUsage: cached.fold(
-        () => 0,
-        (u) => u.memoryUsage || 0,
-      ),
-      storageUsage: 0, // TODO: Calculate from R2
-      queryCount: 0, // TODO: Track queries
-    })
+    return Promise.resolve(
+      success({
+        userId,
+        attached: cached.isSome(),
+        lastAccess: cached.fold(
+          () => new Date(0),
+          (u) => u.lastAccess,
+        ),
+        memoryUsage: cached.fold(
+          () => 0,
+          (u) => u.memoryUsage ?? 0,
+        ),
+        storageUsage: 0, // TODO: Calculate from R2
+        queryCount: 0, // TODO: Track queries
+      }),
+    )
   }
 
   /**

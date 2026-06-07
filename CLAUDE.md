@@ -9,11 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Key Technologies
 
 - **DuckDB node-api** (v1.4.1-r.4): In-process analytical database
-- **functype** (v0.16.0): Functional programming utilities for TypeScript
+- **functype** (v1.3.0): Functional programming utilities for TypeScript
 - **TypeScript** (v5.9.3): Full type safety with strict mode
 - **Node.js** (v22.x): Minimum required version
-- **Vitest**: Testing framework with 14 comprehensive tests
-- **tsup**: Fast bundler for ESM/CJS dual output
+- **Vitest**: Testing framework with 17 comprehensive tests
+- **tsdown**: Fast bundler for ESM/CJS dual output
 - **pnpm**: Package manager (v10.18.3+)
 
 ## Development Commands
@@ -36,7 +36,7 @@ pnpm validate  # 🚀 Format, lint, test, and build everything
 
 ### Testing
 
-- `pnpm test` - Run all 14 tests once
+- `pnpm test` - Run all 17 tests once
 - `pnpm test:watch` - Run tests in watch mode
 - `pnpm test:coverage` - Run tests with coverage report
 - `pnpm test:ui` - Launch Vitest UI for interactive testing
@@ -94,7 +94,7 @@ src/
     └── logger.ts         # Debug logging
 
 test/
-└── DuckPond.spec.ts     # 14 comprehensive tests
+└── DuckPond.spec.ts     # 17 comprehensive tests
 
 dist/                     # Build output (ESM + CJS + types)
 ```
@@ -289,9 +289,11 @@ await conn.close() // Method doesn't exist!
 ### Query Results
 
 ```typescript
-// ✅ Correct: Use getRowObjects() for column name mapping
+// ✅ Correct: Use getRowObjects() for column name mapping.
+// getRowObjects() is not exposed on the result type, so use a typed cast
+// (NOT `as any` — keep it narrow so it still satisfies no-explicit-any).
 const resultObj = await conn.run(sql)
-const rows = await resultObj.getRowObjects() // Returns [{col: val}, ...]
+const rows = await (resultObj as unknown as { getRowObjects: () => Promise<T[]> }).getRowObjects()
 
 // ❌ Wrong: getRows() returns arrays without column names
 const rows = await resultObj.getRows() // Returns [[val1, val2], ...]
@@ -302,59 +304,63 @@ const columns = await resultObj.getColumns() // Returns []
 
 ## Type System Gotchas
 
+> **⚠️ Updated for functype 1.3.0.** Earlier revisions of this file (written against
+> functype 0.16.0) told you to reach for `as any` + `eslint-disable` whenever an
+> `Either` crossed an async boundary. **That advice is obsolete and was removed.**
+> In 1.3.0 `Either<out L, out R>` is **covariant** in both type params and `.isLeft()` /
+> `.isRight()` are real type guards (`this is LeftOf<L,R>`). The patterns below need
+> **no `as any` and no disables** — do not reintroduce them.
+
 ### 1. Async Either Type Compatibility
 
-When returning `Either` from async functions, TypeScript strict mode requires type assertions:
+`Errors.*` factories return `Either<DuckPondError, never>`. Because `R` is covariant
+and `never` is a subtype of every type, this is directly assignable to
+`Either<DuckPondError, T>` — even across an `async` boundary (the value gets wrapped in
+a `Promise` automatically):
 
 ```typescript
 async function example(): AsyncDuckPondResult<void> {
-  // ❌ Error: Either<E, never> not assignable to Promise<Either<E, void>>
+  // ✅ Just return it — no cast needed
   return Errors.notInitialized()
-
-  // ✅ Fix: Cast to any (with eslint-disable)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return Errors.notInitialized() as any
-
-  // ✅ Also works: Cast to expected type
-  return Errors.notInitialized() as AsyncDuckPondResult<void>
 }
 ```
 
 ### 2. Either Propagation in Async Functions
 
-When checking `isLeft()` in async functions:
+`.isLeft()` narrows to `LeftOf<L, R>`, so `.value` is the error (typed as `L`). To
+propagate a `Left` whose success type differs from the current function's, rebuild it
+with `Left(...)` — covariance handles the success-type change:
 
 ```typescript
 async function example(): AsyncDuckPondResult<Data> {
-  const result = await getConnection() // Returns Either<E, Connection>
+  const result = await getConnection() // Either<DuckPondError, Connection>
 
   if (result.isLeft()) {
-    // ❌ Wrong: Type mismatch
-    return result // Either<E, Connection> vs Promise<Either<E, Data>>
-
-    // ✅ Fix: Cast to any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return result as any
+    return Left(result.value) // result.value is DuckPondError (narrowed)
   }
 
-  // Extract right value
-  const conn = result.fold(
-    () => {
-      throw new Error("Unreachable")
-    },
-    (c) => c,
-  )
+  // result is now narrowed to RightOf — read the value directly
+  const conn = result.value
 }
+```
+
+To extract a value from an `Option` after an `isNone()` guard (instead of a
+`throw`-in-`fold`), use `.orThrow(...)`:
+
+```typescript
+if (this.instance.isNone()) return Errors.notInitialized()
+const instance = this.instance.orThrow(new Error("Unexpected: instance should be Some"))
 ```
 
 ### 3. Void vs Undefined
 
-The `success()` helper uses conditional types for void:
+The `success()` helper uses conditional types for void. Assert to the **precise return
+type** (never `any`):
 
 ```typescript
 // Handles both void and undefined
 export function success<T = void>(value?: T): Either<DuckPondError, T extends void ? void : T> {
-  return Right(value) as any
+  return Right(value) as Either<DuckPondError, T extends void ? void : T>
 }
 
 // Usage
@@ -362,9 +368,20 @@ return success(undefined) // Either<E, void>
 return success(data) // Either<E, Data>
 ```
 
+### 4. Remaining `functype/prefer-either` warnings (intentional)
+
+`pnpm lint:check` reports ~7 `functype/prefer-either` **warnings** (not errors — CI stays
+green). They flag the `try/catch` blocks in async methods (`init`, `setupCloudStorage`,
+`query`, `execute`, etc.) and one sync guard `throw` in `getUserDbPath`. These are
+**knowingly left in place**: functype's `Try` is sync-only, so catching DuckDB promise
+rejections and mapping them to a typed `Left` via `try/catch` + `toDuckPondError()` is the
+current, deliberate strategy. Clearing them properly means migrating async effects to
+`IO.tryPromise` / `Task` — a larger architectural change. **Do not silence these warnings
+with `eslint-disable`.** Either leave them, or do the full `IO`/`Task` migration.
+
 ## Testing Strategy
 
-### Test Coverage (14 tests, all passing)
+### Test Coverage (17 tests, all passing)
 
 1. **Initialization (4 tests)**
    - Instance creation with defaults
@@ -372,9 +389,12 @@ return success(data) // Either<E, Data>
    - Successful initialization
    - Multiple init calls (idempotent)
 
-2. **User Management (2 tests)**
+2. **User Management (5 tests)**
    - Attachment checking (`isAttached()`)
    - User statistics retrieval
+   - `listUsers()` with empty cache
+   - `listUsers()` with cached users
+   - Cache utilization reporting
 
 3. **Query Execution (4 tests)**
    - Simple queries with Either
@@ -484,20 +504,23 @@ cached.fold(
 
 ## Build Configuration
 
-### tsup (tsup.config.ts)
+### tsdown (tsdown.config.ts)
 
-- **Dual format**: ESM (.mjs) and CommonJS (.js)
-- **Type declarations**: .d.ts and .d.mts files
-- **Source maps**: Generated for debugging
-- **Environment-aware**: Uses `NODE_ENV` for development/production
-- **Entry points**: All exports from src/ directory
+The config just re-exports the shared `ts-builds/tsdown` preset (`export default tsdown`),
+so build behavior is centralized in `ts-builds`. Observed output (`pnpm build`):
+
+- **Bundler**: tsdown (powered by rolldown)
+- **Type declarations**: `.d.ts` emitted per entry
+- **Source maps**: `.js.map` generated for debugging
+- **Target**: es2020
+- **Entry points**: `src/DuckPond.ts`, `src/index.ts`, `src/types.ts`, `src/cache/LRUCache.ts`, `src/utils/errors.ts`, `src/utils/logger.ts`
 
 ### TypeScript (tsconfig.json)
 
 - **Module resolution**: `bundler` (required for functype subpath imports)
 - **Strict mode**: Enabled with `noImplicitAny: false` for DuckDB native types
 - **Target**: ESNext for modern syntax
-- **Declaration only**: tsup handles actual transpilation
+- **Declaration only**: tsdown handles actual transpilation
 
 ### Vitest (vitest.config.ts)
 
@@ -545,8 +568,10 @@ Or run: `pnpm validate` (automatically runs on `prepublishOnly`)
    - Never call `connection.close()`
    - Use `getRowObjects()` for query results
 
-3. **Handle async Either carefully**:
-   - Use `as any` type assertions when needed
+3. **Handle async Either carefully** (functype 1.3.0 — no `as any`):
+   - `Either<E, never>` from `Errors.*` is assignable to `Either<E, T>` (covariant `R`) — return it directly
+   - After `isLeft()`, propagate with `Left(result.value)`; after the guard, read `result.value` directly (it's narrowed)
+   - Use a **precise** typed assertion only where genuinely needed (e.g. the `success()` conditional type), never `as any`
    - Always return `AsyncDuckPondResult<T>` from async functions
 
 4. **List limitations**:
