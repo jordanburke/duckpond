@@ -1,6 +1,6 @@
 {
   "name": "duckpond-mcp-server",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "MCP server for multi-tenant DuckDB management with R2/S3 storage",
   "keywords": [
     "mcp",
