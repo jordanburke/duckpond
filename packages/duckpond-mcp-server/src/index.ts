@@ -15,77 +15,12 @@ import { getDefaultUserId } from "./tools"
 
 const require = createRequire(import.meta.url)
 const packageJson = require("../package.json") as { version: string }
+import { getConfigFromEnv } from "./config/path-resolver"
 import { startServer } from "./server"
-import type { DuckPondServerConfig } from "./server-core"
 import { startUIServer } from "./ui-server"
 import { loggers } from "./utils/logger"
 
 const log = loggers.main
-
-/**
- * Expand ~ to home directory in paths
- */
-function expandTilde(path: string): string {
-  if (path.startsWith("~/")) {
-    const home = process.env.HOME || process.env.USERPROFILE || "."
-    return `${home}${path.slice(1)}`
-  }
-  return path
-}
-
-/**
- * Get the default data directory for persistent storage
- */
-function getDefaultDataDir(): string {
-  const home = process.env.HOME || process.env.USERPROFILE || "."
-  return `${home}/.duckpond/data`
-}
-
-/**
- * Parse environment variables into DuckPond configuration
- */
-function getConfigFromEnv(): DuckPondServerConfig {
-  // Default to local disk storage (expand ~ if present)
-  const dataDir = expandTilde(process.env.DUCKPOND_DATA_DIR || getDefaultDataDir())
-
-  const config: DuckPondServerConfig = {
-    memoryLimit: process.env.DUCKPOND_MEMORY_LIMIT || "4GB",
-    threads: parseInt(process.env.DUCKPOND_THREADS || "4"),
-    maxActiveUsers: parseInt(process.env.DUCKPOND_MAX_ACTIVE_USERS || "10"),
-    evictionTimeout: parseInt(process.env.DUCKPOND_EVICTION_TIMEOUT || "300000"),
-    cacheType: (process.env.DUCKPOND_CACHE_TYPE as "disk" | "memory" | "noop") || "disk",
-    strategy: (process.env.DUCKPOND_STRATEGY as "parquet" | "duckdb" | "hybrid") || "duckdb",
-    tempDir: process.env.DUCKPOND_TEMP_DIR,
-    cacheDir: process.env.DUCKPOND_CACHE_DIR || dataDir,
-    dataDir,
-  }
-
-  // R2 configuration
-  if (process.env.DUCKPOND_R2_ACCOUNT_ID) {
-    config.r2 = {
-      accountId: process.env.DUCKPOND_R2_ACCOUNT_ID,
-      accessKeyId: process.env.DUCKPOND_R2_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.DUCKPOND_R2_SECRET_ACCESS_KEY || "",
-      bucket: process.env.DUCKPOND_R2_BUCKET || "",
-    }
-  }
-
-  // S3 configuration
-  if (process.env.DUCKPOND_S3_REGION) {
-    config.s3 = {
-      region: process.env.DUCKPOND_S3_REGION,
-      accessKeyId: process.env.DUCKPOND_S3_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.DUCKPOND_S3_SECRET_ACCESS_KEY || "",
-      bucket: process.env.DUCKPOND_S3_BUCKET || "",
-    }
-
-    if (process.env.DUCKPOND_S3_ENDPOINT) {
-      config.s3.endpoint = process.env.DUCKPOND_S3_ENDPOINT
-    }
-  }
-
-  return config
-}
 
 /**
  * Main CLI program

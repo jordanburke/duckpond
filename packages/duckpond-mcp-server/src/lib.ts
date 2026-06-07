@@ -45,5 +45,8 @@ export { createFastMCPServer, startServer } from "./server.js"
 export type { DuckPondServerConfig } from "./server-core.js"
 export { DuckPondServer } from "./server-core.js"
 
+// Configuration / cross-platform path resolution
+export { getConfigFromEnv, getDefaultDataDir, resolveDataDir } from "./config/path-resolver.js"
+
 // Utilities
 export { getDefaultUserId } from "./tools/index.js"
