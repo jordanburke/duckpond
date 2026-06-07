@@ -27,7 +27,7 @@
       "outputs": []
     },
     "validate": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^validate"],
       "outputs": ["dist/**", "lib/**"]
     },
     "dev": {
