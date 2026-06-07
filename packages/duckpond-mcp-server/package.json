@@ -1,0 +1,84 @@
+{
+  "name": "duckpond-mcp-server",
+  "version": "0.5.1",
+  "description": "MCP server for multi-tenant DuckDB management with R2/S3 storage",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "duckdb",
+    "duckpond",
+    "r2",
+    "s3",
+    "cloudflare",
+    "multi-tenant",
+    "analytics",
+    "typescript"
+  ],
+  "author": "jordan.burke@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/jordanburke/duckpond-mcp-server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jordanburke/duckpond-mcp-server"
+  },
+  "type": "module",
+  "bin": {
+    "duckpond-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "validate": "ts-builds validate",
+    "format": "ts-builds format",
+    "format:check": "ts-builds format:check",
+    "lint": "ts-builds lint",
+    "lint:check": "ts-builds lint:check",
+    "typecheck": "ts-builds typecheck",
+    "test": "ts-builds test",
+    "test:watch": "ts-builds test:watch",
+    "test:coverage": "ts-builds test:coverage",
+    "build": "ts-builds build",
+    "dev": "ts-builds dev",
+    "serve:test": "tsx src/index.ts",
+    "serve:test:http": "tsx src/index.ts --transport http",
+    "prepublishOnly": "pnpm validate"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.14",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "commander": "^15.0.0",
+    "debug": "^4.4.3",
+    "duckpond": "^0.5.1",
+    "express": "^5.2.1",
+    "fastmcp": "4.0.2",
+    "hono": "^4.12.23",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "~24.10.15",
+    "ts-builds": "^2.8.2",
+    "tsdown": "^0.22.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./lib": {
+      "types": "./dist/lib.d.ts",
+      "import": "./dist/lib.js"
+    }
+  },
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "prettier": "ts-builds/prettier",
+  "packageManager": "pnpm@10.29.3+sha512.498e1fb4cca5aa06c1dcf2611e6fafc50972ffe7189998c409e90de74566444298ffe43e6cd2acdc775ba1aa7cc5e092a8b7054c811ba8c5770f84693d33d2dc"
+}
