@@ -2,7 +2,6 @@
 *.iml
 lib
 dist
-.turbo
 
 ### Node template
 # Logs

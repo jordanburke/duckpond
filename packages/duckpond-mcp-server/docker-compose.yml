@@ -1,0 +1,60 @@
+services:
+  duckpond:
+    build: .
+    ports:
+      # MCP HTTP server
+      - "3000:3000"
+      # DuckDB UI (direct access, bypasses proxy)
+      - "4213:4213"
+    environment:
+      # DuckDB settings
+      - DUCKPOND_MEMORY_LIMIT=4GB
+      - DUCKPOND_THREADS=4
+      - DUCKPOND_CACHE_TYPE=disk
+
+      # Storage - local disk (persisted via volume)
+      - DUCKPOND_DATA_DIR=/data
+      - DUCKPOND_STRATEGY=duckdb
+
+      # Multi-tenant settings
+      - DUCKPOND_MAX_ACTIVE_USERS=10
+      - DUCKPOND_EVICTION_TIMEOUT=300000
+
+      # Default user for MCP operations
+      - DUCKPOND_DEFAULT_USER=claude
+
+      # Cloudflare R2 (uncomment and configure)
+      # - DUCKPOND_R2_ACCOUNT_ID=your-account-id
+      # - DUCKPOND_R2_ACCESS_KEY_ID=your-access-key
+      # - DUCKPOND_R2_SECRET_ACCESS_KEY=your-secret-key
+      # - DUCKPOND_R2_BUCKET=your-bucket
+
+      # AWS S3 (uncomment and configure)
+      # - DUCKPOND_S3_REGION=us-east-1
+      # - DUCKPOND_S3_ACCESS_KEY_ID=your-access-key
+      # - DUCKPOND_S3_SECRET_ACCESS_KEY=your-secret-key
+      # - DUCKPOND_S3_BUCKET=your-bucket
+
+      # OAuth (uncomment to enable)
+      # - DUCKPOND_OAUTH_ENABLED=true
+      # - DUCKPOND_OAUTH_USERNAME=admin
+      # - DUCKPOND_OAUTH_PASSWORD=secret123
+      # - DUCKPOND_OAUTH_USER_ID=admin-user
+
+      # Basic Auth (uncomment to enable)
+      # - DUCKPOND_BASIC_AUTH_USERNAME=admin
+      # - DUCKPOND_BASIC_AUTH_PASSWORD=secret123
+      # - DUCKPOND_BASIC_AUTH_USER_ID=admin-user
+    volumes:
+      # Persist DuckDB data
+      - duckpond-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  duckpond-data:

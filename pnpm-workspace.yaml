@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - "@duckdb/node-bindings"
+  - "@duckdb/node-api"
+  - esbuild

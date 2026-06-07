@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "duckpond": {
+      "command": "npx",
+      "args": ["-y", "duckpond-mcp-server", "--ui"],
+      "env": {
+        "DUCKPOND_DEFAULT_USER": "claude",
+        "DUCKPOND_DATA_DIR": "${HOME}/OneDrive/Apps/duckdb"
+      }
+    }
+  }
+}
