@@ -1,24 +1,39 @@
-name: Publish to NPM
+name: Publish
+
+# Tag-triggered release. Run `pnpm release patch|minor|major` locally to bump
+# both packages in lockstep, validate, run check-publish-safety, commit, and tag.
+# `git push --follow-tags` triggers this workflow.
+#
+# `duckpond` publishes via npm OIDC trusted publishing (provenance).
+# `duckpond-mcp-server` publishes with NPM_TOKEN. Both env vars are provided;
+# npm's per-package trusted-publisher settings select OIDC where configured.
 
 on:
   push:
     tags:
-      - "v*" # Trigger on version tags (v1.0.0, v1.2.3, etc.)
+      - "v*"
+
+concurrency:
+  group: publish-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
+    name: Publish to npm
     runs-on: ubuntu-latest
-
     permissions:
-      contents: write # Required for GitHub release
-      id-token: write # Required for npm provenance
-
+      contents: write # for GitHub releases
+      id-token: write # for npm OIDC trusted publishing
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,23 +45,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run validation
-        run: pnpm validate
+      - name: Validate
+        run: pnpm turbo run validate
 
-      - name: Update npm
-        run: npm install -g npm@latest
-
-      - name: Verify package contents
-        run: |
-          echo "Files to be published:"
-          npm pack --dry-run
+      - name: Check publish safety
+        run: pnpm check-publish-safety
+        env:
+          ALLOW_MAJOR: ""
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: pnpm -r publish --no-git-checks --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
