@@ -1,6 +1,13 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the `duckpond` library.
+
+> **Monorepo package.** `duckpond` lives at `packages/duckpond/` in the
+> [duckpond monorepo](https://github.com/jordanburke/duckpond) (pnpm + Turborepo).
+> The MCP server (`packages/duckpond-mcp-server/`) consumes it via `workspace:^`.
+> Run commands from this package directory, or from the repo root with
+> `pnpm --filter duckpond <script>` (Turbo builds this library before the server).
+> See the root `CLAUDE.md` for monorepo-wide workflow and release process.
 
 ## Project Overview
 
@@ -8,13 +15,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Key Technologies
 
-- **DuckDB node-api** (v1.4.1-r.4): In-process analytical database
-- **functype** (v1.3.0): Functional programming utilities for TypeScript
-- **TypeScript** (v5.9.3): Full type safety with strict mode
-- **Node.js** (v22.x): Minimum required version
+- **@duckdb/node-api** (^1.5.3-r.3): In-process analytical database (native N-API addon, ships prebuilt)
+- **functype** (^1.3.0): Functional programming utilities for TypeScript
+- **TypeScript** (^6.0.3): Full type safety with strict mode
+- **Node.js** (24, see root `.nvmrc`): minimum required runtime
 - **Vitest**: Testing framework with 17 comprehensive tests
-- **tsdown**: Fast bundler for ESM/CJS dual output
-- **pnpm**: Package manager (v10.18.3+)
+- **tsdown**: Fast bundler (ESM + type declarations)
+- **ts-builds** (^3.0.1): Shared build/lint/test/format tooling
+- **pnpm** (11.5.2): Package manager (workspace orchestrated by Turborepo)
 
 ## Development Commands
 
@@ -50,7 +58,7 @@ pnpm validate  # 🚀 Format, lint, test, and build everything
 ### Development Setup
 
 ```bash
-# Install dependencies (uses pnpm 10.18.3+)
+# Install dependencies from the repo root (pnpm 11 workspace)
 pnpm install
 
 # Run in development mode with auto-rebuild
@@ -530,33 +538,38 @@ so build behavior is centralized in `ts-builds`. Observed output (`pnpm build`):
 
 ### ESLint (eslint.config.mjs)
 
-- **Flat config format**: Using ESLint 9.x flat config
-- **Plugins**: TypeScript, Prettier, simple-import-sort
+- **Flat config format**: ESLint 10.x flat config (via `ts-builds/eslint-functype`)
+- **Plugins**: TypeScript, Prettier, simple-import-sort, functype
 - **Import sorting**: Enforced with simple-import-sort plugin
 - **Prettier integration**: Runs as ESLint rule for consistency
 
 ## CI/CD
 
-GitHub Actions workflows run automatically on push/PR to `main`:
+GitHub Actions workflows live at the **monorepo root** (`.github/workflows/`) and run
+on push/PR to `main`:
 
-- **Node.js CI**: Runs `pnpm validate` (format, lint, test, build)
-- **CodeQL**: Security scanning for vulnerabilities
-- **Node version**: Tests run on Node 22.x
+- **CI** (`ci.yml`): `pnpm install --frozen-lockfile` + `turbo run validate` across all packages
+- **CodeQL** (`codeql.yml`): Security scanning
+- **Publish** (`publish.yml`): on `v*` tags, lockstep `pnpm -r publish` (see root `CLAUDE.md`)
+- **Node version**: 24 (`.nvmrc`), pnpm 11
 
-View status badges at the top of README.md or check `.github/workflows/`.
+This package has no per-package workflows — CI is centralized at the monorepo root.
 
-## Publishing Checklist
+## Publishing
 
-Before publishing to npm, ensure:
+Publishing is **lockstep at the monorepo root** — `duckpond` and `duckpond-mcp-server`
+always release at the same version. Do not bump or `npm publish` this package alone.
 
-1. ✅ All tests pass: `pnpm test`
-2. ✅ No lint errors: `pnpm lint:check`
-3. ✅ Formatting correct: `pnpm format:check`
-4. ✅ Build succeeds: `pnpm build`
-5. ✅ Version bumped in `package.json`
-6. ✅ CHANGELOG updated (if applicable)
+From the repo root:
 
-Or run: `pnpm validate` (automatically runs on `prepublishOnly`)
+```bash
+pnpm release patch|minor|major   # bumps BOTH packages, validates, runs
+                                  # check-publish-safety, commits + tags
+git push --follow-tags            # triggers publish.yml (pnpm -r publish)
+```
+
+`prepublishOnly` still runs `pnpm validate` as a safety net. See the root `CLAUDE.md`
+for the full release flow.
 
 ## Key Implementation Notes
 
