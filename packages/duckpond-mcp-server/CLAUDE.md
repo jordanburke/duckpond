@@ -1,159 +1,113 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with the
+`duckpond-mcp-server` package.
 
-## Memory System Initialization
-
-**IMPORTANT**: At the start of each conversation, load the memory system to recall context:
-
-```sql
--- 1. Health check (verify system integrity)
-SELECT * FROM memory_health;
-
--- 2. Load active memories (high fitness, not archived)
-SELECT type, category, key, value, fitness_score FROM active_memories;
-
--- 3. Check for promotion candidates (memories ready to hardwire)
-SELECT key, value, suggested_target FROM promotion_candidates;
-
--- 4. Check memory relations
-SELECT * FROM memory_graph;
-```
-
-**If health check fails or tables missing**, run schema validation:
-
-```sql
-SELECT name, status FROM validate_schema_query;  -- or check memory_queries for 'validate_schema'
-```
-
-### Memory Operations Quick Reference
-
-| Action                  | Query                                                                                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Search memories         | `SELECT * FROM active_memories WHERE key ILIKE '%keyword%' OR value ILIKE '%keyword%'`                                                    |
-| Store new memory        | Use `store_memory` template from `memory_queries`                                                                                         |
-| Reinforce useful memory | `UPDATE memories SET reinforcement_count = reinforcement_count + 1, fitness_score = LEAST(1.0, fitness_score + 0.1) WHERE id = 'mem_xxx'` |
-| Deprecate outdated      | `UPDATE memories SET fitness_score = fitness_score * 0.5 WHERE id = 'mem_xxx'`                                                            |
-
-### Memory Schema
-
-- `memories` - Core storage with fitness tracking
-- `memory_relations` - Links between memories
-- `memory_access_log` - Audit trail
-- `memory_queries` - SQL templates for operations
+> **Monorepo package.** This lives at `packages/duckpond-mcp-server/` in the
+> [duckpond monorepo](https://github.com/jordanburke/duckpond) (pnpm + Turborepo).
+> It depends on the `duckpond` library via **`workspace:^`** (symlinked from
+> `packages/duckpond/`; Turbo builds the library before this package). Run commands
+> from this package directory, or from the repo root with
+> `pnpm --filter duckpond-mcp-server <script>`. See the root `CLAUDE.md` for
+> monorepo-wide workflow and the lockstep release process.
 
 ## Project Overview
 
-This is an MCP (Model Context Protocol) server that exposes DuckPond's multi-tenant DuckDB capabilities to AI agents. The server enables agents to manage per-user databases, execute SQL queries, and leverage R2/S3 cloud storage through a standardized MCP interface.
+An **MCP (Model Context Protocol) server** that exposes DuckPond's multi-tenant DuckDB
+capabilities to AI agents. Agents can manage per-user databases, run SQL, and use
+R2/S3 cloud (or local) persistence through standard MCP tools.
 
-**Implementation Plan**: See docs/PLAN_MCP_SERVER.md for the complete implementation roadmap.
+- **Transports**: stdio (Claude Desktop) and HTTP (FastMCP, served via Hono).
+- **Auth (HTTP)**: OAuth 2.0 (PKCE, JWT), Basic Auth.
+- **DuckDB UI**: optional built-in web UI for inspecting a user's database.
+- **MCP tools**: `query`, `execute`, `getUserStats`, `isAttached`, `detachUser`.
 
-## Skills to Use
+End-user documentation (install, env vars, endpoints) is in `README.md`. This file is
+for working **on** the code. The original design notes are in `docs/PLAN_MCP_SERVER.md`.
 
-**IMPORTANT**: Always use these skills when working on this project:
+### Key Technologies
 
-### functype-user
+- **duckpond** (`workspace:^`): the underlying multi-tenant DuckDB library
+- **fastmcp** (4.0.2): MCP server framework (HTTP transport)
+- **hono** + **@hono/node-server**: HTTP layer (DuckDB UI server, OAuth endpoints)
+- **commander**: CLI argument parsing (`src/index.ts`)
+- **jsonwebtoken** + **zod**: JWT auth and tool-schema validation
+- **TypeScript** (^6.0.3), **Node.js** (24, root `.nvmrc`)
+- **ts-builds** (^3.0.1): shared format/lint/typecheck/test/build chain
+- **tsdown**: bundler (ESM + type declarations → `dist/`)
+- **Vitest**: test runner; **pnpm** (11.5.2) workspace orchestrated by **Turborepo**
 
-This project uses functype patterns extensively through the duckpond library dependency:
+## Relationship to the `duckpond` library
 
-- Use the `functype-user` skill when converting imperative/OOP code to functional patterns
-- Consult the functype-user skill for API lookups and method usage
-- The duckpond library returns `Either<Error, T>` for error handling - use functype-user skill for Either operations
-- Reference the FUNCTYPE_FEATURE_MATRIX.md in global CLAUDE.md for data structure capabilities
+`src/server-core.ts` is a thin wrapper over the `duckpond` library. The library returns
+`Either<DuckPondError, T>` (functype); the server converts those into an `MCPResult<T>`
+discriminated union (`{ success: true, data } | { success: false, error }`) for the MCP
+tool layer. Because the dependency is `workspace:^`, edits to `packages/duckpond/` are
+picked up immediately (no publish/reinstall) — but the library must be built first, which
+Turbo's `^build`/`^validate` ordering handles.
 
-### typescript-standards
-
-This project follows the typescript-library-template pattern:
-
-- Use the `typescript-standards` skill when setting up build scripts, tooling, or package configuration
-- Follow dual module format patterns (ESM + CJS)
-- Consult the skill for tsup, Vitest, ESLint, and Prettier configuration standards
+For functype patterns (working with `Either`, `Option`, etc.), use the **functype** skill.
 
 ## Development Commands
 
-### Pre-Checkin Command
+```bash
+pnpm validate       # full chain: format → lint → typecheck → test → build (pre-checkin)
+pnpm format         # Prettier write   /  pnpm format:check
+pnpm lint           # ESLint fix       /  pnpm lint:check
+pnpm typecheck      # tsc type check
+pnpm test           # Vitest once      /  pnpm test:watch  /  pnpm test:coverage
+pnpm build          # tsdown production build → dist/
+pnpm dev            # tsdown watch build
+pnpm serve:test     # run the server over stdio (tsx src/index.ts)
+pnpm serve:test:http # run the server over HTTP (tsx src/index.ts --transport http)
+```
 
-- `pnpm validate` - **Main command**: Format, lint, test, and build everything for checkin
+Per-checkin: `pnpm validate`. `prepublishOnly` runs it automatically.
 
-### Formatting
+## Architecture / Key Files
 
-- `pnpm format` - Format code with Prettier (write mode)
-- `pnpm format:check` - Check Prettier formatting without writing
+- **`src/index.ts`** — CLI entry point (commander); selects stdio vs HTTP transport,
+  parses `--ui`/`--port` flags; Web Crypto polyfill. This is the published `bin`.
+- **`src/server-core.ts`** — `DuckPondServer`: wraps the `duckpond` library and maps its
+  `Either` results to `MCPResult<T>`.
+- **`src/server.ts`** — FastMCP-based HTTP server: MCP-over-HTTP, OAuth 2.0 / JWT / Basic
+  auth, endpoints.
+- **`src/ui-server.ts`** — Hono server bridging to the built-in DuckDB UI (port 4213).
+- **`src/tools/index.ts`** — MCP tool schemas (zod) and implementations; `getDefaultUserId()`.
+- **`src/lib.ts`** — library exports (`startServer`, `beforeStart` hook) for _extending_
+  the server; published as the `duckpond-mcp-server/lib` subpath export.
+- **`src/utils/logger.ts`** — `debug`-based loggers (`duckpond:*` namespaces).
 
-### Linting
+### Build & packaging
 
-- `pnpm lint` - Fix ESLint issues (write mode)
-- `pnpm lint:check` - Check ESLint issues without fixing
+- **tsdown** (config re-exports `ts-builds/tsdown`) builds `src/` → `dist/` (ESM + `.d.ts`).
+  There is **no `tsup`** and no `lib/` output despite the `tsconfig` `outDir` — the bin and
+  `exports` resolve to `dist/`.
+- Two published entry points: `.` → `dist/index.js` (the CLI/bin) and `./lib` →
+  `dist/lib.js` (the extension API).
+- Docker: `Dockerfile`/`docker-compose.yml`/`.mcp.json` are present but **not** wired into
+  CI (auto-build deferred at the monorepo level).
 
-### Testing
+## Testing
 
-- `pnpm test` - Run tests once
-- `pnpm test:watch` - Run tests in watch mode
-- `pnpm test:coverage` - Run tests with coverage report
-- `pnpm test:ui` - Launch Vitest UI for interactive testing
+- Vitest via `ts-builds test`. Tests live in `test/` (e.g. `test/server-core.test.ts`),
+  which imports `DuckPondServer` and initializes a real in-memory DuckPond.
+- Because the test imports the `duckpond` workspace package, the library must be built
+  first — handled by Turbo (`validate` depends on `^validate`, so the library's `dist/`
+  is stable before this package's tests run; this avoids a cold-cache resolution race).
 
-### Building
+## CI / Publishing
 
-- `pnpm build` - Production build (outputs to `dist/`)
-- `pnpm build:watch` - Watch mode build
-- `pnpm dev` - Development build with watch mode (alias for build:watch)
+- CI is centralized at the **monorepo root** (`.github/workflows/ci.yml` runs
+  `turbo run validate`). This package has no per-package workflows.
+- **Publishing is lockstep** with the `duckpond` library — both release at the same
+  version. Do **not** bump or publish this package alone. From the repo root:
+  `pnpm release patch|minor|major` then `git push --follow-tags`. The server publishes
+  with `NPM_TOKEN`. See the root `CLAUDE.md`.
 
-### Publishing
+## Conventions
 
-- `prepublishOnly` - Automatically runs `pnpm validate` before publishing
-
-### Type Checking
-
-- `pnpm ts-types` - Check TypeScript types with tsc
-
-## Architecture
-
-### Build System
-
-- **tsup**: Primary build tool configured in `tsup.config.ts`
-- **Dual Output Directories**:
-  - `lib/` - Development builds (NODE_ENV !== "production", used during `pnpm dev`)
-  - `dist/` - Production builds (NODE_ENV === "production", used for publishing)
-- **Format Support**: Generates both CommonJS (`.js`) and ES modules (`.mjs`)
-- **TypeScript**: Auto-generates `.d.ts` declaration files for both formats
-- **Environment-Based Behavior**:
-  - Production: minified, bundled, no watch
-  - Development: source maps, watch mode, faster builds
-
-### Testing Framework
-
-- **Vitest**: Modern test runner with hot reload and coverage
-- **Configuration**: `vitest.config.ts` with Node.js environment
-- **Coverage**: Uses v8 provider with text/json/html reports
-
-### Code Quality Tools
-
-- **ESLint**: Flat config setup in `eslint.config.mjs` with TypeScript support
-- **Prettier**: Integrated with ESLint for consistent formatting
-- **Import Sorting**: Automatic import organization via `simple-import-sort`
-
-### Package Configuration
-
-- **Entry Points**: Main source in `src/index.ts`, builds all files in `src/**/*.ts`
-- **Exports**: Supports both `require()` and `import` with proper type definitions
-- **Publishing**:
-  - Configured for npm with public access
-  - Both `lib/` and `dist/` directories are published (see package.json "files" field)
-  - `prepublishOnly` hook ensures full validation before publish
-
-### TypeScript Configuration
-
-- **Strict Mode**: Enabled with some pragmatic exceptions:
-  - `noImplicitAny: false` - Allows implicit any for flexibility
-  - `strictPropertyInitialization: false` - Relaxed for constructor properties
-- **Target**: ESNext for modern JavaScript features
-- **Output**: TypeScript only emits declaration files; tsup handles transpilation
-
-## Key Files
-
-- `src/index.ts` - Main library entry point
-- `test/*.spec.ts` - Test files using Vitest
-- `tsup.config.ts` - Build configuration with environment-based settings (line 3 checks NODE_ENV)
-- `vitest.config.ts` - Test configuration with coverage settings
-- `eslint.config.mjs` - Linting rules and TypeScript integration
-- `STANDARDIZATION_GUIDE.md` - Instructions for applying this pattern to other projects
+- TypeScript strict (via `ts-builds/tsconfig`); ESLint 10.x flat config + Prettier +
+  simple-import-sort (`ts-builds/eslint-functype`).
+- Prefer functional error handling — the library hands you `Either`; convert at the
+  `server-core` boundary, don't leak exceptions into the MCP tool layer.
