@@ -9,6 +9,7 @@
 **Tech Stack:** pnpm 10.29.3 workspaces, Turborepo 2.9.x, Node 24, TypeScript 6.0.3, ts-builds 2.8.2, tsdown, vitest, tsx.
 
 **Reference repos (read-only, local):**
+
 - functype monorepo: `/home/jordanburke/IdeaProjects/functype` (the pattern we mirror)
 - server source: `/home/jordanburke/IdeaProjects/duckpond-mcp-server` (sibling, merged via subtree)
 
@@ -64,6 +65,7 @@ Validate the riskiest change (Node 22→24 with the native DuckDB addon) **befor
 restructuring, while the repo is still a simple single package and easy to reason about.
 
 **Files:**
+
 - Modify: `.nvmrc`
 
 - [ ] **Step 1: Create the working branch**
@@ -126,6 +128,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 After this task the repo is a working 1-package monorepo.
 
 **Files:**
+
 - Move: `src/`, `test/`, `package.json`, `tsconfig.json`, `tsdown.config.ts`, `eslint.config.mjs`, `.prettierignore`, `README.md`, `CLAUDE.md`, `STANDARDIZATION_GUIDE.md` → `packages/duckpond/`
 - Delete: `pnpm-lock.yaml` (regenerated at root)
 - Create: `packages/` dir, root `package.json`, `pnpm-workspace.yaml`, `turbo.json`
@@ -263,6 +266,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 3: Subtree-merge `duckpond-mcp-server` (history preserved)
 
 **Files:**
+
 - Create (via subtree): `packages/duckpond-mcp-server/**`
 - Delete (post-merge cleanup): `packages/duckpond-mcp-server/.github/`, `packages/duckpond-mcp-server/.nvmrc`, `packages/duckpond-mcp-server/.npmrc`, `packages/duckpond-mcp-server/pnpm-lock.yaml`
 
@@ -340,6 +344,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 This is the core payoff — the server consumes the local library, not the npm copy.
 
 **Files:**
+
 - Modify: `packages/duckpond-mcp-server/package.json` (dependencies)
 
 - [ ] **Step 1: Change the dependency to the workspace protocol**
@@ -396,6 +401,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 5: Port functype's release tooling (2-package family)
 
 **Files:**
+
 - Create: `scripts/release.ts`
 - Create: `scripts/check-publish-safety.ts`
 
@@ -712,6 +718,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 6: Consolidate CI and publishing workflows
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 - Replace: `.github/workflows/publish.yml`
 - Delete: `.github/workflows/node.js.yml`
@@ -856,6 +863,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ## Task 7: Monorepo-level docs
 
 **Files:**
+
 - Replace: `README.md` (root)
 - Replace: `CLAUDE.md` (root)
 - Modify: `packages/duckpond/README.md` (CI badge URL only)
@@ -871,10 +879,10 @@ pnpm + Turborepo monorepo for the DuckPond multi-tenant DuckDB toolkit.
 
 ## Packages
 
-| Package | Path | npm | Description |
-|---|---|---|---|
-| `duckpond` | [`packages/duckpond`](packages/duckpond) | [`duckpond`](https://www.npmjs.com/package/duckpond) | Multi-tenant DuckDB manager with R2/S3 storage and functional-programming patterns |
-| `duckpond-mcp-server` | [`packages/duckpond-mcp-server`](packages/duckpond-mcp-server) | [`duckpond-mcp-server`](https://www.npmjs.com/package/duckpond-mcp-server) | MCP server exposing DuckPond over the Model Context Protocol |
+| Package               | Path                                                           | npm                                                                        | Description                                                                        |
+| --------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `duckpond`            | [`packages/duckpond`](packages/duckpond)                       | [`duckpond`](https://www.npmjs.com/package/duckpond)                       | Multi-tenant DuckDB manager with R2/S3 storage and functional-programming patterns |
+| `duckpond-mcp-server` | [`packages/duckpond-mcp-server`](packages/duckpond-mcp-server) | [`duckpond-mcp-server`](https://www.npmjs.com/package/duckpond-mcp-server) | MCP server exposing DuckPond over the Model Context Protocol                       |
 
 The server depends on the library via `workspace:^`, so changes to `duckpond` are
 picked up immediately without publishing.
@@ -1063,6 +1071,7 @@ Expected: both lines report `ok:`.
 - [ ] **Step 6: Confirm the success criteria, then hand off**
 
 Confirm against the spec's success criteria:
+
 1. `pnpm install` on Node 24 succeeds (native addon builds/loads).
 2. `pnpm validate` passes both packages incl. duckpond's 17 tests.
 3. The server resolves `duckpond` via the workspace symlink.

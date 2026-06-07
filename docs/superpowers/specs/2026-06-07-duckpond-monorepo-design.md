@@ -18,15 +18,15 @@ shape, same `pnpm-workspace.yaml` patterns, same lockstep release tooling.
 
 ## Current state
 
-| | `duckpond` (this repo) | `duckpond-mcp-server` (sibling) |
-|---|---|---|
-| npm name / version | `duckpond` @ 0.5.1 (published) | `duckpond-mcp-server` @ 0.5.1 (published) |
-| Role | DuckDB manager library | MCP server (`bin`, Docker) |
-| Depends on | `@duckdb/node-api`, `functype`, `lru-cache` | **`duckpond: ^0.5.1`**, fastmcp, hono, express, zod, … |
-| Tooling | pnpm 10.29.3, TS 6.0.3, ts-builds 2.8.2, tsdown 0.22.2 | identical |
-| Node (`.nvmrc`) | v22 | 22 |
-| Publish | OIDC trusted publishing (provenance) | classic `NPM_TOKEN` |
-| Git remote | github.com/jordanburke/duckpond | github.com/jordanburke/duckpond-mcp-server |
+|                    | `duckpond` (this repo)                                 | `duckpond-mcp-server` (sibling)                        |
+| ------------------ | ------------------------------------------------------ | ------------------------------------------------------ |
+| npm name / version | `duckpond` @ 0.5.1 (published)                         | `duckpond-mcp-server` @ 0.5.1 (published)              |
+| Role               | DuckDB manager library                                 | MCP server (`bin`, Docker)                             |
+| Depends on         | `@duckdb/node-api`, `functype`, `lru-cache`            | **`duckpond: ^0.5.1`**, fastmcp, hono, express, zod, … |
+| Tooling            | pnpm 10.29.3, TS 6.0.3, ts-builds 2.8.2, tsdown 0.22.2 | identical                                              |
+| Node (`.nvmrc`)    | v22                                                    | 22                                                     |
+| Publish            | OIDC trusted publishing (provenance)                   | classic `NPM_TOKEN`                                    |
+| Git remote         | github.com/jordanburke/duckpond                        | github.com/jordanburke/duckpond-mcp-server             |
 
 Both packages are already in lockstep at 0.5.1 with identical toolchains, which makes
 the merge low-risk.
@@ -112,6 +112,7 @@ Executed on a `monorepo-conversion` branch off `main`.
 ## Workspace & Turbo configuration
 
 **`pnpm-workspace.yaml`** (mirrors functype, scoped to our native deps):
+
 ```yaml
 packages:
   - "packages/*"
@@ -128,6 +129,7 @@ allowBuilds:
   "@duckdb/node-bindings": true
   esbuild: true
 ```
+
 (Exact `allowBuilds`/`onlyBuiltDependencies` key form to be confirmed against the
 installed pnpm 10.29.3 during implementation — pnpm has shifted this field name
 across versions.)
@@ -204,6 +206,7 @@ workflows (`node.js.yml`, the server's `ci.yml`) collapse into this. One root
 ## Success criteria
 
 From a clean clone of the `monorepo-conversion` branch:
+
 1. `pnpm install` succeeds on Node 24 (DuckDB native addon builds).
 2. `pnpm validate` (→ `turbo run validate`) passes for **both** packages — including
    duckpond's 17 tests.
