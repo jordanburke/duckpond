@@ -1,7 +1,24 @@
 packages:
   - "packages/*"
 
-onlyBuiltDependencies:
-  - "@duckdb/node-bindings"
-  - "@duckdb/node-api"
-  - esbuild
+# Hoist CLI tool binaries to the workspace root so every package can run them
+# (pnpm 11 reads this from pnpm-workspace.yaml, not .npmrc's public-hoist-pattern).
+publicHoistPattern:
+  - "*eslint*"
+  - "*prettier*"
+  - "*vitest*"
+  - "typescript"
+  - "*rimraf*"
+  - "*cross-env*"
+
+# Opt out of pnpm 11's minimum-release-age supply-chain gate (matches the
+# functype monorepo). Without this, pnpm 11 rejects recently-published pinned
+# deps (e.g. fastmcp) on a global age policy. Revisit if tightening supply-chain
+# posture is desired.
+minimumReleaseAge: 0
+
+# Dependencies allowed to run install/build scripts (pnpm 11 `allowBuilds`).
+# DuckDB ships prebuilt binaries, so it needs no build script here.
+allowBuilds:
+  esbuild: true
+  tldjs: true
