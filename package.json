@@ -1,6 +1,6 @@
 {
   "name": "duckpond-mcp-server",
-  "version": "0.4.4",
+  "version": "0.5.1",
   "description": "MCP server for multi-tenant DuckDB management with R2/S3 storage",
   "keywords": [
     "mcp",
@@ -42,24 +42,25 @@
     "prepublishOnly": "pnpm validate"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.9",
-    "fastmcp": "3.33.0",
+    "@hono/node-server": "^1.19.14",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "debug": "^4.4.3",
-    "duckpond": "^0.4.1",
+    "duckpond": "^0.5.1",
     "express": "^5.2.1",
-    "hono": "^4.11.9",
+    "fastmcp": "4.0.2",
+    "hono": "^4.12.23",
     "jsonwebtoken": "^9.0.3",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "~24.10.13",
-    "ts-builds": "^2.4.0",
-    "tsdown": "^0.20.3",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "@types/node": "~24.10.15",
+    "ts-builds": "^2.8.2",
+    "tsdown": "^0.22.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",

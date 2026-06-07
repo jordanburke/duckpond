@@ -346,7 +346,7 @@ export class DuckPondServer {
     result: Either<{ code: ErrorCode; message: string; cause?: Error; context?: Record<string, unknown> }, T>,
     executionTime: number,
   ): MCPResult<T> {
-    return result.fold(
+    return result.fold<MCPResult<T>>(
       (error) => ({
         success: false as const,
         error: {
