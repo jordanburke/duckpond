@@ -58,7 +58,7 @@
   },
   "devDependencies": {
     "@types/node": "~24.10.15",
-    "ts-builds": "^3.0.1",
+    "ts-builds": "^3.2.0",
     "tsdown": "^0.22.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
