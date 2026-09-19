@@ -456,9 +456,7 @@ describe("Feature", () => {
 
 ```typescript
 const pond = new DuckPond({
-  r2: {
-    /* ... */
-  },
+  r2: {/* ... */},
 })
 
 const initResult = await pond.init()

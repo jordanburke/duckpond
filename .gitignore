@@ -3,6 +3,7 @@
 lib
 dist
 .turbo
+.ts-builds
 
 ### Node template
 # Logs

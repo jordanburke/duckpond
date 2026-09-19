@@ -115,25 +115,19 @@ DuckPond supports multiple storage strategies:
 ```typescript
 // Parquet files (default) - best for analytics
 const pond = new DuckPond({
-  r2: {
-    /* ... */
-  },
+  r2: {/* ... */},
   strategy: "parquet",
 })
 
 // DuckDB files - full database persistence
 const pond = new DuckPond({
-  r2: {
-    /* ... */
-  },
+  r2: {/* ... */},
   strategy: "duckdb",
 })
 
 // Hybrid - mix both approaches
 const pond = new DuckPond({
-  r2: {
-    /* ... */
-  },
+  r2: {/* ... */},
   strategy: "hybrid",
 })
 ```
